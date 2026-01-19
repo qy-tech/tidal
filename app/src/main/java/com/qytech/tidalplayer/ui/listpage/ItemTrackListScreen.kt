@@ -1,0 +1,178 @@
+package com.qytech.tidalplayer.ui.listpage
+
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.PlatformTextStyle
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.paging.CombinedLoadStates
+import androidx.paging.LoadState
+import androidx.paging.LoadStates
+import androidx.paging.PagingData
+import androidx.paging.compose.LazyPagingItems
+import androidx.paging.compose.collectAsLazyPagingItems
+import coil3.compose.AsyncImage
+import com.qytech.tidalplayer.ui.listpage.model.DataType
+import com.qytech.tidalplayer.ui.listpage.model.SingleSong
+import com.qytech.tidalplayer.ui.listpage.model.SongList
+import kotlinx.coroutines.flow.emptyFlow
+
+private data class PagingItemsData(
+    val data: LazyPagingItems<SingleSong>,
+    val loadState: CombinedLoadStates
+) {}
+
+@Composable
+fun ItemTrackListScreen(
+    listId: String,
+    dataType: Int
+) {
+    val viewModel: ListPageViewModel = hiltViewModel()
+    val pagingItem = remember {
+        when (dataType) {
+            DataType.PLAY_LIST.ordinal -> viewModel.getPlaylistItemPagingData(listId, dataType)
+            DataType.ALBUM.ordinal -> viewModel.getAlbumItemPagingData(listId, dataType)
+            else -> emptyFlow()
+        }
+    }.collectAsLazyPagingItems()
+
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(
+                color = Color(0xff080808)
+            ),
+    ) {
+        when (pagingItem.loadState.refresh) {
+            is LoadState.Loading -> {
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    CircularProgressIndicator()
+                }
+            }
+
+            is LoadState.NotLoading -> {
+                ItemList(
+                    itemList = pagingItem,
+                    onClick = { beforeSong, currentSong, nextSong ->
+                        viewModel.loadSong(currentSong)
+                        viewModel.playSong()
+                        viewModel.setControllerShow(true)
+                    }
+                )
+            }
+
+            is LoadState.Error -> {
+
+            }
+        }
+    }
+}
+
+@Composable
+private fun ItemList(
+    itemList: LazyPagingItems<SingleSong>,
+    onClick: (beforeSong: SingleSong?, currentSong: SingleSong, nextSong: SingleSong?) -> Unit
+) {
+    LazyColumn() {
+        items(
+            count = itemList.itemCount
+        ) { index ->
+            val item = itemList[index]
+            if (item != null) {
+                Item(
+                    item = item,
+                    onClick = { currentSong ->
+                        val beforeSong = if (index - 1 >= 0) {
+                            itemList[index - 1]
+                        } else {
+                            null
+                        }
+                        val nextSong = if (index + 1 < itemList.itemCount) {
+                            itemList[index + 1]
+                        } else {
+                            null
+                        }
+                        onClick.invoke(beforeSong, currentSong, nextSong)
+                    }
+                )
+            }
+        }
+    }
+
+    if (itemList.itemCount == 0) {
+        Box(
+            modifier = Modifier.fillMaxSize(),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(
+                text = "暂无数据",
+                fontSize = 25.sp,
+                color = Color.White,
+                letterSpacing = 10.sp
+            )
+        }
+    }
+}
+
+@Composable
+private fun Item(
+    item: SingleSong,
+    onClick: (SingleSong) -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .height(50.dp)
+            .fillMaxSize()
+            .padding(horizontal = 10.dp)
+            .clickable(onClick = { onClick.invoke(item) }),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        AsyncImage(
+            model = item.coverUrl,
+            contentDescription = null,
+            modifier = Modifier.size(40.dp)
+        )
+        Spacer(modifier = Modifier.size(10.dp))
+        Text(
+            text = item.title,
+            style = TextStyle(
+                platformStyle = PlatformTextStyle(
+                    includeFontPadding = false
+                )
+            ),
+            color = Color.White,
+            modifier = Modifier.weight(1f)
+        )
+
+        Text(
+            text = item.duration,
+            style = TextStyle(
+                platformStyle = PlatformTextStyle(
+                    includeFontPadding = false
+                )
+            ),
+            color = Color.White,
+        )
+    }
+}

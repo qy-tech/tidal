@@ -1,0 +1,887 @@
+package com.qytech.tidal.repository
+
+import com.qytech.tidal.api.TidalApi
+import com.qytech.tidal.cache.TidalStore
+import com.qytech.tidal.data.Album
+import com.qytech.tidal.data.AlbumDetail
+import com.qytech.tidal.data.paging.AlbumList
+import com.qytech.tidal.data.Artist
+import com.qytech.tidal.data.ArtistDetail
+import com.qytech.tidal.data.paging.ArtistList
+import com.qytech.tidal.data.paging.Pagination
+import com.qytech.tidal.data.Playlist
+import com.qytech.tidal.data.paging.PlaylistList
+import com.qytech.tidal.data.paging.PlaylistTracks
+import com.qytech.tidal.data.ResourceType
+import com.qytech.tidal.data.TrackDetail
+import com.qytech.tidal.data.UserInfo
+import com.qytech.tidal.data.request.AddTracksToPlaylistData
+import com.qytech.tidal.data.request.AddTracksToPlaylistRequest
+import com.qytech.tidal.data.model.AlbumResource
+import com.qytech.tidal.data.model.ArtistResource
+import com.qytech.tidal.data.model.ArtworkResource
+import com.qytech.tidal.data.request.CollectionRequest
+import com.qytech.tidal.data.request.CreatePlaylistAttributes
+import com.qytech.tidal.data.request.CreatePlaylistData
+import com.qytech.tidal.data.request.CreatePlaylistRequest
+import com.qytech.tidal.data.model.MinimalistResources
+import com.qytech.tidal.data.model.PlaylistItemMeta
+import com.qytech.tidal.data.model.PlaylistResource
+import com.qytech.tidal.data.request.RemoveTracksFromPlaylistData
+import com.qytech.tidal.data.request.RemoveTracksFromPlaylistRequest
+import com.qytech.tidal.data.model.TrackResource
+import com.qytech.tidal.data.model.toArtistList
+import com.qytech.tidal.data.response.toTrackDetailList
+import com.qytech.tidal.data.model.toTrackList
+import com.qytech.tidal.data.paging.AlbumsTracks
+import com.qytech.tidal.data.toCoverArtList
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.flowOn
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.launch
+import javax.inject.Inject
+import javax.inject.Singleton
+
+@Singleton
+class TidalRepository @Inject constructor(
+    private val api: TidalApi,
+    private val store: TidalStore
+) {
+    private var collectionTrackIds: List<String> = emptyList()
+    private var collectionAlbumIds: List<String> = emptyList()
+    private var collectionArtistIds: List<String> = emptyList()
+    private var collectionPlaylistIds: List<String> = emptyList()
+
+    private val repositoryScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
+    
+    init {
+        repositoryScope.launch {
+            store.tidalStoreData.collect { data -> 
+                collectionTrackIds = data.collectionTrackIds
+                collectionAlbumIds = data.collectionAlbumIds
+                collectionArtistIds = data.collectArtistIds
+                collectionPlaylistIds = data.collectionPlaylistIds
+            }
+        }
+    }
+
+    private fun updateCollectionTrackIds(trackIds: List<String>) {
+        CoroutineScope(Dispatchers.IO).launch {
+            store.updateByKey(TidalStore.StoreKeys.COLLECTION_TRACK_IDS,trackIds)
+        }
+    }
+
+    private fun addTrackIdsToCollection(trackIds: List<String>) {
+        updateCollectionTrackIds(trackIds.union(collectionTrackIds).toList())
+    }
+
+    private fun removeTrackIdsFromCollection(trackIds: List<String>) {
+        updateCollectionTrackIds(collectionTrackIds - trackIds)
+    }
+
+    private fun updateCollectionAlbumIds(albumIds: List<String>) {
+        CoroutineScope(Dispatchers.IO).launch {
+            store.updateByKey(TidalStore.StoreKeys.COLLECTION_ALBUM_IDS, albumIds)
+        }
+    }
+
+    private fun addAlbumIdsToCollection(albumIds: List<String>) {
+        updateCollectionAlbumIds(albumIds.union(collectionAlbumIds).toList())
+    }
+
+    private fun removeAlbumIdsFromCollection(albumIds: List<String>) {
+        updateCollectionAlbumIds(collectionAlbumIds - albumIds)
+    }
+
+    private fun updateCollectionArtistIds(artistIds: List<String>) {
+        CoroutineScope(Dispatchers.IO).launch {
+            store.updateByKey(TidalStore.StoreKeys.COLLECTION_ARTIST_IDS, artistIds)
+        }
+    }
+
+    private fun addArtistIdsToCollection(artistIds: List<String>) {
+        updateCollectionArtistIds(artistIds.union(collectionArtistIds).toList())
+    }
+
+    private fun removeArtistIdsFromCollection(artistIds: List<String>) {
+        updateCollectionArtistIds(collectionArtistIds - artistIds)
+    }
+
+    private fun updateCollectionPlaylistIds(playlistIds: List<String>) {
+        CoroutineScope(Dispatchers.IO).launch {
+            store.updateByKey(TidalStore.StoreKeys.COLLECTION_PLAYLIST_IDS, playlistIds)
+        }
+    }
+
+    private fun addPlaylistIdsToCollection(playlistIds: List<String>) {
+        updateCollectionPlaylistIds(playlistIds.union(collectionPlaylistIds).toList())
+    }
+
+    private fun removePlaylistIdsFromCollection(playlistIds: List<String>) {
+        updateCollectionPlaylistIds(collectionPlaylistIds - playlistIds)
+    }
+
+    /**
+     * 获取专辑详情
+     */
+    fun getAlbumDetail(albumId: String): Flow<AlbumDetail> = flow {
+        emit(api.getAlbum(albumId))
+    }.map { response ->
+        val albumData = response.data.attributes
+        val includedData = response.included
+        val artists = includedData.filterIsInstance<ArtistResource>().toArtistList()
+        val coverArts = includedData.filterIsInstance<ArtworkResource>().toCoverArtList()
+        val tracks = includedData.filterIsInstance<TrackResource>().toTrackList()
+        val albumInfo = Album(
+            id = response.data.id,
+            title = albumData.title,
+            barcodeId = albumData.barcodeId,
+            numberOfItems = albumData.numberOfItems,
+            duration = albumData.duration,
+            releaseDate = albumData.releaseDate,
+            coverArts = coverArts,
+            artists = artists
+        )
+        AlbumDetail(
+            albumInfo = albumInfo,
+            tracks = tracks
+        )
+    }.flowOn(Dispatchers.IO).catch { throw it }
+
+    /**
+     * 获取歌单详情
+     */
+    fun getPlaylistDetail(playlistId: String): Flow<Playlist> = flow {
+        emit(api.getPlaylist(playlistId))
+    }.map { response ->
+        val playlistData = response.data.attributes
+        val includedData = response.included
+        val coverArts = includedData.filterIsInstance<ArtworkResource>().toCoverArtList()
+        Playlist(
+            id = response.data.id,
+            name = playlistData.name,
+            description = playlistData.description,
+            createdAt = playlistData.createdAt,
+            lastModifiedAt = playlistData.lastModifiedAt,
+            coverArts = coverArts
+        )
+    }.flowOn(Dispatchers.IO).catch { throw it }
+
+    /**
+     * 获取用户推荐-myMixes
+     */
+    fun getMyMixes(userId: String): Flow<List<Playlist>> = flow {
+        emit(api.getMyMixes(userId))
+    }.map { response ->
+        val includedData = response.included
+        val artworks = includedData.filterIsInstance<ArtworkResource>()
+        includedData.filterIsInstance<PlaylistResource>().map { playlist ->
+            Playlist(
+                id = playlist.id,
+                name = playlist.attributes.name,
+                description = playlist.attributes.description,
+                createdAt = playlist.attributes.createdAt,
+                lastModifiedAt = playlist.attributes.lastModifiedAt,
+                coverArts = artworks.filter { it.id == playlist.relationships.coverArt.data?.firstOrNull()?.id }
+                    .toCoverArtList()
+            )
+        }.sortedBy { it.name }
+    }.flowOn(Dispatchers.IO).catch { emit(emptyList()) }
+
+    /**
+     * 获取用户推荐-discoveryMixes
+     */
+    fun getDiscoveryMixes(userId: String): Flow<List<Playlist>> = flow {
+        emit(api.getDiscoveryMixes(userId))
+    }.map { response ->
+        val includedData = response.included
+        val artworks = includedData.filterIsInstance<ArtworkResource>()
+        includedData.filterIsInstance<PlaylistResource>().map { playlist ->
+            Playlist(
+                id = playlist.id,
+                name = playlist.attributes.name,
+                description = playlist.attributes.description,
+                createdAt = playlist.attributes.createdAt,
+                lastModifiedAt = playlist.attributes.lastModifiedAt,
+                coverArts = artworks.filter { it.id == playlist.relationships.coverArt.data?.firstOrNull()?.id }
+                    .toCoverArtList()
+            )
+        }
+    }.flowOn(Dispatchers.IO).catch { emit(emptyList()) }
+
+    /**
+     * 获取用户推荐-newArrivalMixes
+     */
+    fun getNewArrivalMixes(userId: String): Flow<List<Playlist>> = flow {
+        emit(api.getNewArrivalMixes(userId))
+    }.map { response ->
+        val includedData = response.included
+        val artworks = includedData.filterIsInstance<ArtworkResource>()
+        includedData.filterIsInstance<PlaylistResource>().map { playlist ->
+            Playlist(
+                id = playlist.id,
+                name = playlist.attributes.name,
+                description = playlist.attributes.description,
+                createdAt = playlist.attributes.createdAt,
+                lastModifiedAt = playlist.attributes.lastModifiedAt,
+                coverArts = artworks.filter { it.id == playlist.relationships.coverArt.data?.firstOrNull()?.id }
+                    .toCoverArtList()
+            )
+        }
+    }.flowOn(Dispatchers.IO).catch { emit(emptyList()) }
+
+    /**
+     * 获取多个单曲
+     */
+    fun getTracks(trackIds: List<String>): Flow<List<TrackDetail>> = flow {
+        emit(api.getTracks(trackIds = trackIds))
+    }.map { response ->
+        response.toTrackDetailList()
+    }.flowOn(Dispatchers.IO).catch { emit(emptyList()) }
+
+    /**
+     * 获取歌单中的单曲
+     */
+    suspend fun getPlaylistTracks(playlistId: String, pageCursor: String? = null): PlaylistTracks {
+        try {
+            val playlistItemsResponse = api.getPlaylistItems(playlistId = playlistId, pageCursor = pageCursor)
+            val pagination = Pagination(nextCursor = playlistItemsResponse.links.meta?.nextCursor)
+            val trackIds = playlistItemsResponse.data.map { it.id }
+
+            val tracksResponse = api.getTracks(trackIds = trackIds)
+            val tracks = tracksResponse.toTrackDetailList().map { track ->
+                track.copy(itemId = playlistItemsResponse.data.firstOrNull { it.id == track.trackInfo.id }?.meta?.itemId)
+            }
+
+            return PlaylistTracks(
+                tracks = tracks,
+                pagination = pagination
+            )
+        } catch (e: Exception) {
+            return PlaylistTracks(
+                tracks = emptyList(),
+                pagination = Pagination()
+            )
+        }
+    }
+
+    suspend fun getAlbumsTracks(albumId: String, pageCursor: String? = null): AlbumsTracks {
+        try {
+            val response = api.getAlbumsItems(albumsId = albumId, pageCursor = pageCursor)
+            val pagination = Pagination(nextCursor = response.links.meta?.nextCursor)
+            val trackIds = response.data.map { it.id }
+
+            val tracksResponse = api.getTracks(trackIds = trackIds)
+            val tracks = tracksResponse.toTrackDetailList()
+
+            return AlbumsTracks(
+                tracks = tracks,
+                pagination = pagination
+            )
+        } catch (e: Exception) {
+            return AlbumsTracks(
+                tracks = emptyList(),
+                pagination = Pagination()
+            )
+        }
+    }
+
+    /**
+     * 获取收藏的专辑
+     */
+    suspend fun getCollectionAlbums(userId: String, pageCursor: String? = null): AlbumList {
+        try {
+            val response = api.getCollectionAlbums(userId = userId, pageCursor = pageCursor)
+            val pagination = Pagination(nextCursor = response.links.meta?.nextCursor)
+            val includedData = response.included!!
+            val artists = includedData.filterIsInstance<ArtistResource>().toArtistList()
+            val artworks = includedData.filterIsInstance<ArtworkResource>()
+            val albums = includedData.filterIsInstance<AlbumResource>().map { albumResource ->
+                val albumData = albumResource.attributes
+                val coverArts =
+                    artworks.filter { artwork -> albumResource.relationships.coverArt.data?.firstOrNull()?.id == artwork.id }
+                        .toCoverArtList()
+                val artists =
+                    artists.filter { artist -> albumResource.relationships.artists.data?.firstOrNull()?.id == artist.id }
+                Album(
+                    id = albumResource.id,
+                    title = albumData.title,
+                    barcodeId = albumData.barcodeId,
+                    numberOfItems = albumData.numberOfItems,
+                    duration = albumData.duration,
+                    releaseDate = albumData.releaseDate,
+                    coverArts = coverArts,
+                    artists = artists
+                )
+            }
+
+            addAlbumIdsToCollection(albums.map { it.id })
+
+            return AlbumList(
+                albums = albums,
+                pagination = pagination
+            )
+        } catch (e: Exception) {
+            e.printStackTrace()
+            return AlbumList(albums = emptyList(), pagination = Pagination())
+        }
+    }
+
+    /**
+     * 收藏专辑
+     */
+    fun addAlbumsToCollection(userId: String, albumIds: List<String>): Flow<Unit> = flow {
+        api.addAlbumsToCollection(
+            userId = userId,
+            requestBody = CollectionRequest(
+                albumIds.map { MinimalistResources(id = it, type = ResourceType.ALBUM.type) }
+            )
+        )
+
+        addAlbumIdsToCollection(albumIds)
+
+        emit(Unit)
+    }.flowOn(Dispatchers.IO).catch { throw it }
+
+    /**
+     * 检查专辑是否被收藏
+     */
+    fun checkAlbumIsCollected(albumId: String): Boolean = collectionAlbumIds.contains(albumId)
+
+    /**
+     * 取消专辑收藏
+     */
+    fun removeAlbumsFromCollection(userId: String, albumIds: List<String>): Flow<Unit> = flow {
+        api.removeAlbumsFromCollection(
+            userId = userId,
+            requestBody = CollectionRequest(
+                albumIds.map { MinimalistResources(id = it, type = ResourceType.ALBUM.type) }
+            )
+        )
+
+        removeAlbumIdsFromCollection(albumIds)
+
+        emit(Unit)
+    }.flowOn(Dispatchers.IO).catch { throw it }
+
+    /**
+     * 获取收藏的歌单
+     */
+    suspend fun getCollectionPlaylists(userId: String, pageCursor: String? = null): PlaylistList {
+        try {
+            val response = api.getCollectionPlaylists(userId = userId, pageCursor = pageCursor)
+            val pagination = Pagination(nextCursor = response.links.meta?.nextCursor)
+            val includedData = response.included!!
+            val artworks = includedData.filterIsInstance<ArtworkResource>()
+            val playlists = includedData.filterIsInstance<PlaylistResource>().map {
+                Playlist(
+                    id = it.id,
+                    name = it.attributes.name,
+                    description = it.attributes.description,
+                    createdAt = it.attributes.createdAt,
+                    lastModifiedAt = it.attributes.lastModifiedAt,
+                    coverArts = artworks.filter { artwork -> it.relationships.coverArt.data?.firstOrNull()?.id == artwork.id }
+                        .toCoverArtList()
+                )
+            }
+
+            addPlaylistIdsToCollection(playlists.map { it.id })
+
+            return PlaylistList(
+                playlists = playlists,
+                pagination = pagination
+            )
+        } catch (e: Exception) {
+            return PlaylistList(emptyList(), Pagination())
+        }
+    }
+
+    /**
+     * 收藏歌单
+     */
+    fun addPlaylistsToCollection(userId: String, playlistIds: List<String>): Flow<Unit> = flow {
+        api.addPlaylistsToCollection(
+            userId = userId,
+            requestBody = CollectionRequest(
+                playlistIds.map {
+                    MinimalistResources(
+                        id = it,
+                        type = ResourceType.PLAYLIST.type
+                    )
+                }
+            )
+        )
+
+        addPlaylistIdsToCollection(playlistIds)
+
+        emit(Unit)
+    }.flowOn(Dispatchers.IO).catch { throw it }
+
+    /**
+     * 检查歌单是否被收藏
+     */
+    fun checkPlaylistIsCollected(playlistId: String): Boolean =
+        collectionPlaylistIds.contains(playlistId)
+
+    /**
+     * 取消歌单收藏
+     */
+    fun removePlaylistsFromCollection(userId: String, playlistIds: List<String>): Flow<Unit> =
+        flow {
+            api.removePlaylistsFromCollection(
+                userId = userId,
+                requestBody = CollectionRequest(
+                    playlistIds.map {
+                        MinimalistResources(
+                            id = it,
+                            type = ResourceType.PLAYLIST.type
+                        )
+                    }
+                )
+            )
+
+            removePlaylistIdsFromCollection(playlistIds)
+
+            emit(Unit)
+        }.flowOn(Dispatchers.IO).catch { throw it }
+
+    /**
+     * 获取收藏的单曲
+     */
+    fun getCollectionTracks(userId: String, pageCursor: String? = null): Flow<PlaylistTracks> =
+        flow {
+            val collectionResponse =
+                api.getCollectionTracks(userId = userId, pageCursor = pageCursor)
+            val pagination = Pagination(nextCursor = collectionResponse.links.meta?.nextCursor)
+            val trackIds = collectionResponse.data.map { it.id }
+
+            val tracksResponse = api.getTracks(trackIds = trackIds)
+            val tracks = tracksResponse.toTrackDetailList()
+
+            addTrackIdsToCollection(trackIds)
+
+            emit(
+                PlaylistTracks(
+                    tracks = tracks,
+                    pagination = pagination
+                )
+            )
+        }.flowOn(Dispatchers.IO).catch {
+            emit(
+                PlaylistTracks(
+                    tracks = emptyList(),
+                    pagination = Pagination()
+                )
+            )
+        }
+
+    /**
+     * 收藏单曲
+     */
+    fun addTracksToCollection(userId: String, trackIds: List<String>): Flow<Unit> = flow {
+        api.addTracksToCollection(
+            userId = userId,
+            requestBody = CollectionRequest(
+                trackIds.map { MinimalistResources(id = it, type = ResourceType.TRACK.type) }
+            )
+        )
+
+        addTrackIdsToCollection(trackIds)
+
+        emit(Unit)
+    }.flowOn(Dispatchers.IO).catch { throw it }
+
+    /**
+     * 检查单曲是否被收藏
+     */
+    fun checkTrackIsCollected(trackId: String): Boolean = collectionTrackIds.contains(trackId)
+
+    /**
+     * 取消单曲收藏
+     */
+    fun removeTracksFromCollection(userId: String, trackIds: List<String>): Flow<Unit> = flow {
+        api.removeTracksFromCollection(
+            userId = userId,
+            requestBody = CollectionRequest(
+                trackIds.map { MinimalistResources(id = it, type = ResourceType.TRACK.type) }
+            )
+        )
+
+        removeTrackIdsFromCollection(trackIds)
+
+        emit(Unit)
+    }.flowOn(Dispatchers.IO).catch { throw it }
+
+    /**
+     * 获取收藏的艺术家
+     */
+    fun getCollectionArtists(userId: String, pageCursor: String? = null): Flow<ArtistList> = flow {
+        emit(api.getCollectionArtists(userId = userId, pageCursor = pageCursor))
+    }.map { response ->
+        val pagination = Pagination(nextCursor = response.links.meta?.nextCursor)
+        val includedData = response.included!!
+        val artworks = includedData.filterIsInstance<ArtworkResource>()
+        val artists = includedData.filterIsInstance<ArtistResource>().map {
+            ArtistDetail(
+                artistInfo = Artist(
+                    id = it.id,
+                    name = it.attributes.name
+                ),
+                profileArts = artworks.filter { artwork -> it.relationships.profileArt.data?.firstOrNull()?.id == artwork.id }
+                    .toCoverArtList()
+            )
+        }
+
+        addArtistIdsToCollection(artists.map { it.artistInfo.id })
+
+        ArtistList(
+            artists = artists,
+            pagination = pagination
+        )
+    }.flowOn(Dispatchers.IO)
+        .catch { emit(ArtistList(artists = emptyList(), pagination = Pagination())) }
+
+    /**
+     * 收藏艺术家
+     */
+    fun addArtistsToCollection(userId: String, artistIds: List<String>): Flow<Unit> = flow {
+        api.addArtistsToCollection(
+            userId = userId,
+            requestBody = CollectionRequest(
+                artistIds.map { MinimalistResources(id = it, type = ResourceType.ARTIST.type) }
+            )
+        )
+
+        addArtistIdsToCollection(artistIds)
+
+        emit(Unit)
+    }.flowOn(Dispatchers.IO).catch { throw it }
+
+    /**
+     * 检查艺术家是否被收藏
+     */
+    fun checkArtistIsCollected(artistId: String): Boolean = collectionArtistIds.contains(artistId)
+
+    /**
+     * 取消艺术家收藏
+     */
+    fun removeArtistsFromCollection(userId: String, artistIds: List<String>): Flow<Unit> = flow {
+        api.removeArtistsFromCollection(
+            userId = userId,
+            requestBody = CollectionRequest(
+                artistIds.map { MinimalistResources(id = it, type = ResourceType.ARTIST.type) }
+            )
+        )
+
+        removeArtistIdsFromCollection(artistIds)
+
+        emit(Unit)
+    }.flowOn(Dispatchers.IO).catch { throw it }
+
+    /**
+     * 搜索专辑
+     */
+    fun searchAlbums(query: String, pageCursor: String? = null): Flow<AlbumList> = flow {
+        emit(api.searchAlbums(query = query, pageCursor = pageCursor))
+    }.map { response ->
+        val pagination = Pagination(nextCursor = response.links.meta?.nextCursor)
+        val includedData = response.included!!
+        val artists = includedData.filterIsInstance<ArtistResource>().toArtistList()
+        val artworks = includedData.filterIsInstance<ArtworkResource>()
+        val albums = includedData.filterIsInstance<AlbumResource>().map { albumResource ->
+            val albumData = albumResource.attributes
+            val coverArts =
+                artworks.filter { artwork -> albumResource.relationships.coverArt.data?.firstOrNull()?.id == artwork.id }
+                    .toCoverArtList()
+            val artists =
+                artists.filter { artist -> albumResource.relationships.artists.data?.firstOrNull()?.id == artist.id }
+            Album(
+                id = albumResource.id,
+                title = albumData.title,
+                barcodeId = albumData.barcodeId,
+                numberOfItems = albumData.numberOfItems,
+                duration = albumData.duration,
+                releaseDate = albumData.releaseDate,
+                coverArts = coverArts,
+                artists = artists
+            )
+        }
+        AlbumList(
+            albums = albums,
+            pagination = pagination
+        )
+    }.flowOn(Dispatchers.IO).catch {
+        emit(
+            AlbumList(
+                albums = emptyList(),
+                pagination = Pagination()
+            )
+        )
+    }
+
+    /**
+     * 搜索艺术家
+     */
+    fun searchArtists(query: String, pageCursor: String? = null): Flow<ArtistList> = flow {
+        emit(api.searchArtists(query = query, pageCursor = pageCursor))
+    }.map { response ->
+        val pagination = Pagination(nextCursor = response.links.meta?.nextCursor)
+        val includedData = response.included!!
+        val artworks = includedData.filterIsInstance<ArtworkResource>()
+        val artists = includedData.filterIsInstance<ArtistResource>().map {
+            ArtistDetail(
+                artistInfo = Artist(
+                    id = it.id,
+                    name = it.attributes.name
+                ),
+                profileArts = artworks.filter { artwork -> it.relationships.profileArt.data?.firstOrNull()?.id == artwork.id }
+                    .toCoverArtList()
+            )
+        }
+        ArtistList(
+            artists = artists,
+            pagination = pagination
+        )
+    }.flowOn(Dispatchers.IO).catch {
+        emit(
+            ArtistList(
+                artists = emptyList(),
+                pagination = Pagination()
+            )
+        )
+    }
+
+    /**
+     * 搜索歌单
+     */
+    fun searchPlaylists(query: String, pageCursor: String? = null): Flow<PlaylistList> =
+        flow {
+            emit(api.searchPlaylists(query = query, pageCursor = pageCursor))
+        }.map { response ->
+            val pagination = Pagination(nextCursor = response.links.meta?.nextCursor)
+            val includedData = response.included!!
+            val artworks = includedData.filterIsInstance<ArtworkResource>()
+            val playlists = includedData.filterIsInstance<PlaylistResource>().map {
+                Playlist(
+                    id = it.id,
+                    name = it.attributes.name,
+                    description = it.attributes.description,
+                    createdAt = it.attributes.createdAt,
+                    lastModifiedAt = it.attributes.lastModifiedAt,
+                    coverArts = artworks.filter { artwork -> it.relationships.coverArt.data?.firstOrNull()?.id == artwork.id }
+                        .toCoverArtList()
+                )
+            }
+            PlaylistList(
+                playlists = playlists,
+                pagination = pagination
+            )
+        }.flowOn(Dispatchers.IO).catch {
+            emit(
+                PlaylistList(
+                    playlists = emptyList(),
+                    pagination = Pagination()
+                )
+            )
+        }
+
+    /**
+     * 搜索单曲
+     */
+    fun searchTracks(query: String, pageCursor: String? = null): Flow<PlaylistTracks> =
+        flow {
+            val searchResponse = api.searchTracks(query = query, pageCursor = pageCursor)
+            val pagination = Pagination(nextCursor = searchResponse.links.meta?.nextCursor)
+            val trackIds = searchResponse.data.map { it.id }
+
+            val tracksResponse = api.getTracks(trackIds = trackIds)
+            val tracks = tracksResponse.toTrackDetailList()
+
+            emit(
+                PlaylistTracks(
+                    tracks = tracks,
+                    pagination = pagination
+                )
+            )
+        }.flowOn(Dispatchers.IO).catch {
+            emit(
+                PlaylistTracks(
+                    tracks = emptyList(),
+                    pagination = Pagination()
+                )
+            )
+        }
+
+    /**
+     * 获取用户的歌单
+     */
+    fun getUserPlaylists(userId: String, pageCursor: String? = null): Flow<PlaylistList> = flow {
+        emit(api.getUserPlaylists(userId = userId, pageCursor = pageCursor))
+    }.map { response ->
+        val pagination = Pagination(nextCursor = response.links.meta?.nextCursor)
+        val includedData = response.included
+        val artworks = includedData.filterIsInstance<ArtworkResource>()
+        val playlists = response.data.map {
+            Playlist(
+                id = it.id,
+                name = it.attributes.name,
+                description = it.attributes.description,
+                createdAt = it.attributes.createdAt,
+                lastModifiedAt = it.attributes.lastModifiedAt,
+                coverArts = artworks.filter { artwork -> it.relationships.coverArt.data?.firstOrNull()?.id == artwork.id }
+                    .toCoverArtList()
+            )
+        }
+        PlaylistList(
+            playlists = playlists,
+            pagination = pagination
+        )
+    }.flowOn(Dispatchers.IO).catch {
+        emit(
+            PlaylistList(
+                playlists = emptyList(),
+                pagination = Pagination()
+            )
+        )
+    }
+
+    /**
+     * 创建歌单
+     */
+    fun createPlaylist(
+        name: String,
+        description: String = "",
+    ): Flow<Any> = flow {
+        emit(
+            api.createPlaylist(
+                requestBody = CreatePlaylistRequest(
+                    CreatePlaylistData(
+                        type = ResourceType.PLAYLIST.type,
+                        attributes = CreatePlaylistAttributes(
+                            name = name,
+                            description = description
+                        )
+                    )
+                )
+            )
+        )
+    }.flowOn(Dispatchers.IO).catch { throw it }
+
+    /**
+     * 删除歌单
+     */
+    fun deletePlaylist(
+        playlistId: String,
+    ): Flow<Unit> = flow {
+        emit(api.deletePlaylist(playlistId = playlistId))
+    }.flowOn(Dispatchers.IO).catch { throw it }
+
+    /**
+     * 添加单曲到歌单
+     */
+    fun addTracksToPlaylist(
+        playlistId: String,
+        trackIds: List<String>,
+    ): Flow<Unit> = flow {
+        emit(
+            api.addTracksToPlaylist(
+                playlistId = playlistId,
+                requestBody = AddTracksToPlaylistRequest(
+                    data = trackIds.map {
+                        AddTracksToPlaylistData(
+                            type = ResourceType.TRACK.type,
+                            id = it
+                        )
+                    }
+                )
+            )
+        )
+    }.flowOn(Dispatchers.IO).catch { throw it }
+
+    /**
+     * 从歌单中删除单曲
+     */
+    fun removeTracksFromPlaylist(
+        playlistId: String,
+        tracks: List<TrackDetail>,
+    ): Flow<Unit> = flow {
+        emit(
+            api.removeTracksFromPlaylist(
+                playlistId = playlistId,
+                requestBody = RemoveTracksFromPlaylistRequest(
+                    data = tracks.map {
+                        RemoveTracksFromPlaylistData(
+                            type = ResourceType.TRACK.type,
+                            id = it.trackInfo.id,
+                            meta = PlaylistItemMeta(
+                                itemId = it.itemId ?: playlistId
+                            )
+                        )
+                    }
+                )
+            )
+        )
+    }.flowOn(Dispatchers.IO).catch { throw it }
+
+    /**
+     * 获取艺术家的专辑
+     */
+    fun getArtistAlbums(artistId: String, pageCursor: String? = null): Flow<AlbumList> = flow {
+        emit(api.getArtistAlbums(artistId = artistId, pageCursor = pageCursor))
+    }.map { response ->
+        val pagination = Pagination(nextCursor = response.links.meta?.nextCursor)
+        val includedData = response.included!!
+        val artists = includedData.filterIsInstance<ArtistResource>().toArtistList()
+        val artworks = includedData.filterIsInstance<ArtworkResource>()
+        val albums = includedData.filterIsInstance<AlbumResource>().map { albumResource ->
+            val albumData = albumResource.attributes
+            val coverArts =
+                artworks.filter { artwork -> albumResource.relationships.coverArt.data?.firstOrNull()?.id == artwork.id }
+                    .toCoverArtList()
+            val artists =
+                artists.filter { artist -> albumResource.relationships.artists.data?.firstOrNull()?.id == artist.id }
+            Album(
+                id = albumResource.id,
+                title = albumData.title,
+                barcodeId = albumData.barcodeId,
+                numberOfItems = albumData.numberOfItems,
+                duration = albumData.duration,
+                releaseDate = albumData.releaseDate,
+                coverArts = coverArts,
+                artists = artists
+            )
+        }
+        AlbumList(
+            albums = albums,
+            pagination = pagination
+        )
+    }.flowOn(Dispatchers.IO).catch {
+        emit(
+            AlbumList(
+                albums = emptyList(),
+                pagination = Pagination()
+            )
+        )
+    }
+
+    /**
+     * 获取用户信息
+     */
+    fun getUser(): Flow<UserInfo> = flow {
+        emit(api.getUser())
+    }.map { response ->
+        val userData = response.data.attributes
+        UserInfo(
+            id = response.data.id,
+            userName = userData.username,
+            email = userData.email,
+            firstName = userData.firstName,
+            lastName = userData.lastName
+        )
+    }.flowOn(Dispatchers.IO).catch { throw it }
+}
