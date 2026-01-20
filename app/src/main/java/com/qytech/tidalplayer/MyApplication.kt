@@ -4,6 +4,7 @@ import android.app.Application
 import android.util.Log
 import androidx.hilt.work.HiltWorkerFactory
 import androidx.work.Configuration
+import com.qytech.tidalplayer.utils.ToastUtils
 import com.tencent.mmkv.MMKV
 import dagger.hilt.android.HiltAndroidApp
 import timber.log.Timber
@@ -21,6 +22,7 @@ class MyApplication: Application(), Configuration.Provider {
             Timber.plant(Timber.DebugTree())
         }
         MMKV.initialize(this)
+        ToastUtils.init(this)
     }
 
     override val workManagerConfiguration: Configuration

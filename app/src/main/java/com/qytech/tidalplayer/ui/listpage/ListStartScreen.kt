@@ -108,7 +108,6 @@ fun ListStartScreen(
         ) {
             composable(TidalRoute.SONG_LIST) {
                 SongListScreen(
-                    viewModel = viewModel,
                     navController = navController,
                     onBack = onBack
                 )

@@ -40,7 +40,6 @@ import kotlinx.coroutines.launch
 
 @Composable
 fun SongListScreen(
-    viewModel: ListPageViewModel,
     navController: NavController,
     onBack: () -> Unit
 ) {
@@ -103,7 +102,6 @@ fun SongListScreen(
             when (page) {
                 0 -> {
                     ForYouContent(
-                        viewModel = viewModel,
                         item = item,
                         navController = navController
                     )

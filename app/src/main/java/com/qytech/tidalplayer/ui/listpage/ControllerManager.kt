@@ -1,13 +1,16 @@
 package com.qytech.tidalplayer.ui.listpage
 
 import android.content.Context
+import android.widget.Toast
 import com.qytech.tidal.TidalService
 import com.qytech.tidalplayer.ui.listpage.model.ControllerUiState
 import com.qytech.tidalplayer.ui.listpage.model.SingleSong
+import com.qytech.tidalplayer.utils.ToastUtils
 import com.tidal.sdk.player.Player
 import com.tidal.sdk.player.common.model.MediaProduct
 import com.tidal.sdk.player.common.model.ProductType
 import com.tidal.sdk.player.playbackengine.model.Event
+import com.tidal.sdk.player.playbackengine.model.PlaybackState
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -18,6 +21,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import timber.log.Timber
 import java.util.UUID
 import javax.inject.Inject
@@ -69,7 +73,13 @@ class ControllerManager @Inject constructor(
                         Timber.e("Event.Error ${value.message}")
                     }
 
-                    is Event.StreamingPrivilegesRevoked,
+                    is Event.StreamingPrivilegesRevoked -> {
+                        withContext(Dispatchers.Main) {
+                            ToastUtils.show("当前账号在别处正在播放，本处已暂停")
+                            Timber.e("StreamingPrivilegesRevoked: ${value.privilegedClientDisplayName}")
+                        }
+                    }
+
                     is Event.DjSessionUpdate -> {
 
                     }
@@ -90,7 +100,10 @@ class ControllerManager @Inject constructor(
                         totalProgress = if (totalProgress >= 0f) totalProgress else 0f
                     )
                 }
-                delay(200)
+                if (player?.playbackEngine?.playbackState == PlaybackState.STALLED) {
+                    Timber.d("playbackState: ${player?.playbackEngine?.playbackState}")
+                }
+                delay(1)
             }
         }
     }
@@ -182,6 +195,7 @@ class ControllerManager @Inject constructor(
 
     fun pauseSong() {
         applyPlayer {
+            Timber.d("pauseSong: asd")
             playbackEngine.pause()
         }
     }

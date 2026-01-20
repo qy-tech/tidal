@@ -44,6 +44,7 @@ foundationLayout = "1.10.0"
 pagingCommon = "3.3.6"
 
 tidal-androidx-media = "1.5.0.1"
+uiGraphics = "1.10.1"
 
 [libraries]
 androidx-constraintlayout-compose = { module = "androidx.constraintlayout:constraintlayout-compose", version.ref = "constraintlayoutCompose" }
@@ -135,6 +136,7 @@ tidal-exoPlayer-dash = { module = "com.tidal.androidx.media3:media3-exoplayer-da
 tidal-exoPlayer-hls = { module = "com.tidal.androidx.media3:media3-exoplayer-hls", version.ref = "tidal-androidx-media" }
 tidal-exoPlayer-extension-flac = { module = "com.tidal.androidx.media3:media3-flac", version.ref = "tidal-androidx-media" }
 tidal-exoPlayer-extension-okhttp = { module = "com.tidal.androidx.media3:media3-datasource-okhttp", version.ref = "tidal-androidx-media" }
+androidx-ui-graphics = { group = "androidx.compose.ui", name = "ui-graphics", version.ref = "uiGraphics" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

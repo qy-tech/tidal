@@ -98,6 +98,7 @@ dependencies {
     implementation(libs.hilt.work)
     implementation(libs.androidx.navigation.runtime.ktx)
     implementation(libs.navigation.compose)
+    implementation(libs.androidx.ui.graphics)
     ksp(libs.hilt.android.compiler)
 
     implementation(libs.timber)
