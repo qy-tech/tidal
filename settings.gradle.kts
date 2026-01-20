@@ -9,29 +9,22 @@ pluginManagement {
                 includeGroupByRegex("androidx.*")
             }
         }
+        google()
         mavenCentral()
         gradlePluginPortal()
     }
 }
 dependencyResolutionManagement {
-    repositoriesMode = RepositoriesMode.FAIL_ON_PROJECT_REPOS
+    repositoriesMode.set(RepositoriesMode.PREFER_SETTINGS)
     repositories {
-        mavenLocal()
-        google {
-            content {
-                includeGroupByRegex("com\\.android.*")
-                includeGroupByRegex("com\\.google.*")
-                includeGroupByRegex("androidx.*")
-            }
-        }
-        maven {
-            url = uri("https://jitpack.io")
-        }
+        google()
         mavenCentral()
+        mavenLocal()
+        maven(url = "https://jitpack.io")
     }
 }
 
+
 rootProject.name = "TidalPlayer"
-enableFeaturePreview("TYPESAFE_PROJECT_ACCESSORS")
 include(":app")
 include(":tidal")

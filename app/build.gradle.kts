@@ -1,3 +1,4 @@
+import org.gradle.kotlin.dsl.dependencies
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -16,6 +17,15 @@ android {
     namespace = "com.qytech.tidalplayer"
     compileSdk {
         version = release(36)
+    }
+
+    signingConfigs {
+        getByName("debug") {
+            storeFile = file("..\\SystemSignature.jks")
+            storePassword = "qytech1688"
+            keyAlias = "qytech"
+            keyPassword = "qytech1688"
+        }
     }
 
     defaultConfig {
@@ -41,7 +51,7 @@ android {
                 "proguard-rules.pro"
             )
             signingConfig = signingConfigs.getByName("debug")
-            val applicationName = "QYHiFiPlayer"
+            val applicationName = "QYTidalPlayer"
             val versionName = defaultConfig.versionName
             val date = SimpleDateFormat("yyyyMMdd", Locale.getDefault()).format(Date())
             setProperty("archivesBaseName", "$applicationName-v$versionName-$date")
@@ -50,7 +60,7 @@ android {
         debug {
             isMinifyEnabled = false
             signingConfig = signingConfigs.getByName("debug")
-            val applicationName = "QYHiFiPlayer"
+            val applicationName = "QYTidalPlayer"
             val versionName = defaultConfig.versionName
             val date = SimpleDateFormat("yyyyMMdd", Locale.getDefault()).format(Date())
             setProperty("archivesBaseName", "$applicationName-v$versionName-$date")
@@ -80,6 +90,10 @@ android {
 }
 
 dependencies {
+    api(
+        fileTree(mapOf("dir" to "libs", "include" to listOf("*.jar", "*.aar")))
+    )
+
     implementation(libs.hilt.android)
     implementation(libs.hilt.work)
     implementation(libs.androidx.navigation.runtime.ktx)
@@ -112,6 +126,6 @@ dependencies {
     implementation(project(":tidal"))
     implementation(libs.androidx.paging.compose)
     implementation(libs.auth)
-    implementation(libs.player)
+//    implementation(libs.player)
     implementation(libs.eventproducer)
 }

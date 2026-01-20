@@ -13,6 +13,9 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -22,29 +25,22 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
-import androidx.paging.CombinedLoadStates
 import androidx.paging.LoadState
-import androidx.paging.LoadStates
-import androidx.paging.PagingData
 import androidx.paging.compose.LazyPagingItems
 import androidx.paging.compose.collectAsLazyPagingItems
 import coil3.compose.AsyncImage
 import com.qytech.tidalplayer.ui.listpage.model.DataType
 import com.qytech.tidalplayer.ui.listpage.model.SingleSong
-import com.qytech.tidalplayer.ui.listpage.model.SongList
 import kotlinx.coroutines.flow.emptyFlow
-
-private data class PagingItemsData(
-    val data: LazyPagingItems<SingleSong>,
-    val loadState: CombinedLoadStates
-) {}
 
 @Composable
 fun ItemTrackListScreen(
     listId: String,
-    dataType: Int
+    dataType: Int,
+
 ) {
     val viewModel: ListPageViewModel = hiltViewModel()
+    val currentListId by viewModel.currentListId.collectAsState()
     val pagingItem = remember {
         when (dataType) {
             DataType.PLAY_LIST.ordinal -> viewModel.getPlaylistItemPagingData(listId, dataType)
@@ -53,6 +49,14 @@ fun ItemTrackListScreen(
         }
     }.collectAsLazyPagingItems()
 
+    LaunchedEffect(pagingItem.itemCount, currentListId) {
+        if (pagingItem.loadState.refresh is LoadState.NotLoading) {
+            viewModel.setCurrentSongList(listId, pagingItem.itemSnapshotList.items)
+            if (!pagingItem.loadState.append.endOfPaginationReached) {
+                if (pagingItem.itemCount > 0) pagingItem[pagingItem.itemCount - 1] // 让他默认全部加载完
+            }
+        }
+    }
 
     Box(
         modifier = Modifier
@@ -74,9 +78,11 @@ fun ItemTrackListScreen(
             is LoadState.NotLoading -> {
                 ItemList(
                     itemList = pagingItem,
-                    onClick = { beforeSong, currentSong, nextSong ->
-                        viewModel.loadSong(currentSong)
-                        viewModel.playSong()
+                    onClick = { index, currentSong ->
+                        // 将所有歌曲id添加到控制器中
+                        viewModel.setCurrentListId(listId)
+                        viewModel.setCurrentSongList(listId, pagingItem.itemSnapshotList.items.subList((index - 5).coerceAtLeast(0), (index + 6).coerceAtMost(pagingItem.itemCount)))
+                        viewModel.loadAndPlaySong(index, currentSong)
                         viewModel.setControllerShow(true)
                     }
                 )
@@ -92,7 +98,7 @@ fun ItemTrackListScreen(
 @Composable
 private fun ItemList(
     itemList: LazyPagingItems<SingleSong>,
-    onClick: (beforeSong: SingleSong?, currentSong: SingleSong, nextSong: SingleSong?) -> Unit
+    onClick: (index: Int, currentSong: SingleSong) -> Unit
 ) {
     LazyColumn() {
         items(
@@ -103,17 +109,7 @@ private fun ItemList(
                 Item(
                     item = item,
                     onClick = { currentSong ->
-                        val beforeSong = if (index - 1 >= 0) {
-                            itemList[index - 1]
-                        } else {
-                            null
-                        }
-                        val nextSong = if (index + 1 < itemList.itemCount) {
-                            itemList[index + 1]
-                        } else {
-                            null
-                        }
-                        onClick.invoke(beforeSong, currentSong, nextSong)
+                        onClick.invoke(index, currentSong)
                     }
                 )
             }

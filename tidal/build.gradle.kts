@@ -1,4 +1,5 @@
 import com.qytech.convention.extensions.loadLocalProperties
+import org.gradle.kotlin.dsl.dependencies
 
 
 plugins {
@@ -67,9 +68,16 @@ android {
 }
 
 dependencies {
-    implementation(
+    api(
         fileTree(mapOf("dir" to "libs", "include" to listOf("*.jar", "*.aar")))
     )
+
+    api(libs.tidal.exoPlayer.core)
+    implementation(libs.tidal.exoPlayer.dash)
+    implementation(libs.tidal.exoPlayer.hls)
+    implementation(libs.tidal.exoPlayer.extension.flac)
+    implementation(libs.tidal.exoPlayer.extension.okhttp)
+
     implementation(libs.retrofit)
     // 如果需要 Gson 转换器：
     implementation(libs.converter.gson)
@@ -89,5 +97,5 @@ dependencies {
 
     implementation(libs.auth)
     implementation(libs.eventproducer)
-    implementation(libs.player)
+//    implementation(libs.player)
 }

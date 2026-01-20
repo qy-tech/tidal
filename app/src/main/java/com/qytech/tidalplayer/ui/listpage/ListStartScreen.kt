@@ -30,7 +30,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -55,14 +57,12 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
-import androidx.navigation.toRoute
 import coil3.compose.AsyncImage
 import com.qytech.tidalplayer.R
 import com.qytech.tidalplayer.ui.TidalRoute
 import com.qytech.tidalplayer.ui.listpage.components.CustomThinSlider
 import com.qytech.tidalplayer.ui.listpage.model.SingleSong
 import com.tidal.sdk.player.playbackengine.model.PlaybackState
-import timber.log.Timber
 
 @Composable
 fun ListStartScreen(
@@ -88,9 +88,10 @@ fun ListStartScreen(
     }
     val currentSong by remember {
         derivedStateOf {
-            controllerUiState.singleSong
+            controllerUiState.currentSong
         }
     }
+    var nextSong by remember { mutableStateOf(SingleSong()) }
 
     ConstraintLayout() {
         val (nav, controller, floatButton) = createRefs()
@@ -178,12 +179,25 @@ fun ListStartScreen(
                         viewModel.setDragProgress(null)
                     },
                     onPlayOrPause = {
-                        if (!isPlayerIdle) {
+                        val state = controllerUiState.playbackState
+                        if (state != null && state != PlaybackState.IDLE) {
                             if (isPlaying) {
                                 viewModel.pauseSong()
                             } else {
                                 viewModel.playSong()
                             }
+                        }
+                    },
+                    onForward = {
+                        val state = controllerUiState.playbackState
+                        if (state != null && state != PlaybackState.IDLE) {
+                            viewModel.beforeSong()
+                        }
+                    },
+                    onBackward = {
+                        val state = controllerUiState.playbackState
+                        if (state != null && state != PlaybackState.IDLE) {
+                            viewModel.nextSong()
                         }
                     },
                     onHidden = {
@@ -219,6 +233,8 @@ private fun MusicController(
     onSliderValueChanged: (Float) -> Unit = {},
     onSliderValueChangedFinish: () -> Unit = {},
     onPlayOrPause: () -> Unit = {},
+    onForward: () -> Unit = {},
+    onBackward: () -> Unit = {},
     onHidden: () -> Unit = {}
 ) {
     ConstraintLayout(
@@ -349,7 +365,9 @@ private fun MusicController(
             )
             Controller(
                 isPlaying = isPlaying,
-                onPlayOrPause = onPlayOrPause
+                onPlayOrPause = onPlayOrPause,
+                onForward = onForward,
+                onBackward = onBackward
             )
             Spacer(
                 modifier = Modifier

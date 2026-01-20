@@ -43,6 +43,8 @@ ui = "1.10.0"
 foundationLayout = "1.10.0"
 pagingCommon = "3.3.6"
 
+tidal-androidx-media = "1.5.0.1"
+
 [libraries]
 androidx-constraintlayout-compose = { module = "androidx.constraintlayout:constraintlayout-compose", version.ref = "constraintlayoutCompose" }
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -127,6 +129,12 @@ kotlin-serialization-gradlePlugin = { group = "org.jetbrains.kotlin", name = "ko
 androidx-ui = { group = "androidx.compose.ui", name = "ui", version.ref = "ui" }
 androidx-compose-foundation-layout = { group = "androidx.compose.foundation", name = "foundation-layout", version.ref = "foundationLayout" }
 androidx-paging-common = { group = "androidx.paging", name = "paging-common", version.ref = "pagingCommon" }
+
+tidal-exoPlayer-core = { module = "com.tidal.androidx.media3:media3-exoplayer", version.ref = "tidal-androidx-media" }
+tidal-exoPlayer-dash = { module = "com.tidal.androidx.media3:media3-exoplayer-dash", version.ref = "tidal-androidx-media" }
+tidal-exoPlayer-hls = { module = "com.tidal.androidx.media3:media3-exoplayer-hls", version.ref = "tidal-androidx-media" }
+tidal-exoPlayer-extension-flac = { module = "com.tidal.androidx.media3:media3-flac", version.ref = "tidal-androidx-media" }
+tidal-exoPlayer-extension-okhttp = { module = "com.tidal.androidx.media3:media3-datasource-okhttp", version.ref = "tidal-androidx-media" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
