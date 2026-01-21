@@ -42,20 +42,9 @@ class TidalViewModel @Inject constructor(
 
     fun getTidalLogin() = tidalLogin
 
-    private val tokenLoginUser = flow<UserInfo?> {
-        try {
-            repository.getUser().collectLatest { userInfo ->
-                emit(userInfo)
-            }
-        } catch (e: Exception) {
-            emit(null)
-        }
-    }.flowOn(Dispatchers.IO)
-
     val isLoggedIn = tidalLogin.loginUiState
         .map { state ->
             val cacheLoggedIn = !tidalCacheManager.getUserInfo()?.id.isNullOrBlank()
-            Timber.d("cache login state.isLoggedIn:${state.isLoggedIn}, cacheLoggedIn: ${cacheLoggedIn}")
             state.isLoggedIn || cacheLoggedIn
         }
         .stateIn(

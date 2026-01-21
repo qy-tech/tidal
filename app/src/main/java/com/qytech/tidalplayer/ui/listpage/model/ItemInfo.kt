@@ -25,7 +25,8 @@ data class SingleSong(
     override val itemList: List<ItemInfo> = emptyList(),
     override val coverUrl: String? = null,
     override val dataType: DataType = DataType.TRACK,
-    val duration: String = "3M38S"
+    val duration: String = "3M38S",
+    val version: String = ""
 ) : ItemInfo
 
 data class Artist(

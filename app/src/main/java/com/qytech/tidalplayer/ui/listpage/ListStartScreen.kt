@@ -38,6 +38,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
@@ -86,6 +87,11 @@ fun ListStartScreen(
     val isPlaying by remember {
         derivedStateOf {
             controllerUiState.playbackState == PlaybackState.PLAYING
+        }
+    }
+    val isBuffering by remember {
+        derivedStateOf {
+            controllerUiState.playbackState == PlaybackState.STALLED
         }
     }
     val isPlayerIdle by remember {
@@ -169,6 +175,8 @@ fun ListStartScreen(
                 MusicController(
                     currentSong = currentSong,
                     isPlaying = isPlaying,
+                    isFavourite = viewModel.checkFavouriteTrack(currentSong.id),
+                    isBuffering = isBuffering,
                     sliderEnabled = !isPlayerIdle,
                     progress = controllerUiState.currentProgress,
                     totalProgress = controllerUiState.totalProgress,
@@ -190,7 +198,7 @@ fun ListStartScreen(
                     onPlayOrPause = {
                         val state = controllerUiState.playbackState
                         if (state != null && state != PlaybackState.IDLE) {
-                            if (isPlaying) {
+                            if (isPlaying || isBuffering) {
                                 viewModel.pauseSong()
                             } else {
                                 viewModel.playSong()
@@ -221,6 +229,7 @@ fun ListStartScreen(
                     bottom.linkTo(parent.bottom, 50.dp)
                 },
                 isPlaying = isPlaying,
+                isBuffering = isBuffering,
                 onClick = {
                     viewModel.setControllerShow(true)
                 }
@@ -243,6 +252,8 @@ private fun MusicController(
     modifier: Modifier = Modifier,
     currentSong: SingleSong = SingleSong(),
     isPlaying: Boolean = false,
+    isFavourite: Boolean = false,
+    isBuffering: Boolean = false,
     progress: Float = 0f,
     totalProgress: Float = 0f,
     sliderEnabled: Boolean = false,
@@ -386,6 +397,8 @@ private fun MusicController(
             )
             Controller(
                 isPlaying = isPlaying,
+                isFavourite = isFavourite,
+                isBuffering = isBuffering,
                 onPlayOrPause = onPlayOrPause,
                 onForward = onForward,
                 onBackward = onBackward
@@ -421,6 +434,8 @@ private fun MusicController(
 @Composable
 private fun Controller(
     isPlaying: Boolean = false,
+    isFavourite: Boolean = false,
+    isBuffering: Boolean = false,
     onForward: () -> Unit = {},
     onPlayOrPause: () -> Unit = {},
     onBackward: () -> Unit = {},
@@ -464,12 +479,30 @@ private fun Controller(
                 .clickable(onClick = onPlayOrPause),
             contentAlignment = Alignment.Center
         ) {
-            Icon(
-                imageVector = ImageVector.vectorResource(if (isPlaying) R.drawable.icon_pause_solid_full else R.drawable.icon_play_solid_full),
-                contentDescription = null,
-                tint = Color(0xff080808),
-                modifier = Modifier.size(25.dp)
-            )
+            if (isBuffering) {
+                val infiniteTransition = rememberInfiniteTransition()
+                val angle by infiniteTransition.animateFloat(
+                    initialValue = 0f,
+                    targetValue = 360f,
+                    animationSpec = infiniteRepeatable(
+                        animation = tween(1000, easing = LinearEasing)
+                    )
+                )
+                Icon(
+                    imageVector = ImageVector.vectorResource(R.drawable.icon_spinner_solid_full),
+                    contentDescription = null,
+                    tint = Color(0xff080808),
+                    modifier = Modifier.size(25.dp)
+                        .rotate(angle)
+                )
+            } else {
+                Icon(
+                    imageVector = ImageVector.vectorResource(if (isPlaying) R.drawable.icon_pause_solid_full else R.drawable.icon_play_solid_full),
+                    contentDescription = null,
+                    tint = Color(0xff080808),
+                    modifier = Modifier.size(25.dp)
+                )
+            }
         }
         Spacer(
             modifier = Modifier
@@ -509,9 +542,9 @@ private fun Controller(
             contentAlignment = Alignment.Center
         ) {
             Icon(
-                imageVector = ImageVector.vectorResource(R.drawable.icon_heart_regular_full),
+                imageVector = ImageVector.vectorResource(if (isFavourite) R.drawable.icon_heart_solid_full else R.drawable.icon_heart_regular_full),
                 contentDescription = null,
-                tint = Color(0xffA0A0A0),
+                tint = if (isFavourite) TidalCyan else Color(0xffA0A0A0),
                 modifier = Modifier.size(25.dp)
             )
         }
@@ -527,6 +560,7 @@ val DarkBg = Color(0xFF1A1A1A)
 private fun PulsingMusicButton(
     modifier: Modifier = Modifier,
     isPlaying: Boolean = false,
+    isBuffering: Boolean = false,
     onClick: () -> Unit = {}
 ) {
     // 1. 创建无限动画控制器
@@ -618,12 +652,29 @@ private fun PulsingMusicButton(
                 .background(DarkBg)
                 .padding(9.dp) // 图标内边距
         ) {
-            Icon(
-                imageVector = ImageVector.vectorResource(R.drawable.icon_music_solid_full),
-                contentDescription = "Show Player",
-                tint = TidalCyan,
-                modifier = Modifier.matchParentSize()
-            )
+            if (isBuffering) {
+                val angle by infiniteTransition.animateFloat(
+                    initialValue = 0f,
+                    targetValue = 360f,
+                    animationSpec = infiniteRepeatable(
+                        animation = tween(1000, easing = LinearEasing)
+                    )
+                )
+                Icon(
+                    imageVector = ImageVector.vectorResource(R.drawable.icon_spinner_solid_full),
+                    contentDescription = null,
+                    tint = TidalCyan,
+                    modifier = Modifier.matchParentSize()
+                        .rotate(angle)
+                )
+            } else {
+                Icon(
+                    imageVector = ImageVector.vectorResource(R.drawable.icon_music_solid_full),
+                    contentDescription = "Show Player",
+                    tint = TidalCyan,
+                    modifier = Modifier.matchParentSize()
+                )
+            }
         }
     }
 }

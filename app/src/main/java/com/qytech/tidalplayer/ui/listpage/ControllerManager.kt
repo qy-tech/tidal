@@ -31,6 +31,8 @@ class ControllerManager @Inject constructor(
 ) {
 
     val player: Player? = TidalService.getPlayerInstance(context)
+    private val _currentArtistId = MutableStateFlow("")
+    val currentArtistId = _currentArtistId.asStateFlow()
     private val _currentListId = MutableStateFlow("")
     val currentListId = _currentListId.asStateFlow()
     private val _currentSongId = MutableStateFlow("")
@@ -100,9 +102,13 @@ class ControllerManager @Inject constructor(
                         totalProgress = if (totalProgress >= 0f) totalProgress else 0f
                     )
                 }
-                delay(1)
+                delay(200)
             }
         }
+    }
+
+    fun setCurrentArtistId(artistId: String) {
+        _currentArtistId.update { artistId }
     }
 
     fun setCurrentListId(listId: String) {

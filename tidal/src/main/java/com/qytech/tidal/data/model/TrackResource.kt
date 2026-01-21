@@ -13,6 +13,7 @@ data class TrackResource(
 fun TrackResource.toTrack() = Track(
     id = this.id,
     title = this.attributes.title,
+    version = this.attributes.version ?: "",
     duration = this.attributes.duration
 )
 

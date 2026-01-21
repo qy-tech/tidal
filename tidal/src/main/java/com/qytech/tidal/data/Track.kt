@@ -3,6 +3,7 @@ package com.qytech.tidal.data
 data class Track(
     val id: String,
     val title: String,
+    val version: String = "",
     val duration: String,
 )
 

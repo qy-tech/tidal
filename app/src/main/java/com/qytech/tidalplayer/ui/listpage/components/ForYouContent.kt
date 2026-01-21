@@ -75,14 +75,16 @@ fun ForYouContent(
 ) {
     val viewModel: ListPageViewModel = hiltViewModel()
     val controllerUiState by viewModel.controllerUiState.collectAsState()
+    val playingArtistId by viewModel.currentArtistId.collectAsState()
     val playingListId by viewModel.currentListId.collectAsState()
     val playingSongId by viewModel.currentSongId.collectAsState()
     val isPlaying by remember {
         derivedStateOf {
-            controllerUiState.playbackState == PlaybackState.PLAYING
+            controllerUiState.playbackState == PlaybackState.PLAYING || controllerUiState.playbackState == PlaybackState.STALLED
         }
     }
 
+    val artistData = viewModel.collectionArtistsPagingData.collectAsLazyPagingItems()
     val playlistData = viewModel.collectionPlaylistPagingData.collectAsLazyPagingItems()
     val albumData = viewModel.collectionAlbumPagingData.collectAsLazyPagingItems()
     val trackData = viewModel.collectionTracksPagingData.collectAsLazyPagingItems()
@@ -121,6 +123,9 @@ fun ForYouContent(
                                 // 跳转到单曲界面
                                 val route = TidalRoute.getItemTrackListRoute(item.id, item.dataType)
                                 navController.navigate(route)
+                            },
+                            onRefresh = {
+                                viewModel.refreshAllCollection(subItem.dataType)
                             }
                         )
                     }
@@ -133,6 +138,10 @@ fun ForYouContent(
                             isFavourite = viewModel::checkFavouriteTrack,
                             dataList = trackData,
                             onClick = { index, item ->
+                                if (playingSongId == item.id && isPlaying) {
+                                    viewModel.pauseSong()
+                                    return@ForYouTracks
+                                }
                                 viewModel.setCurrentListId(listId)
                                 viewModel.setCurrentSongList(
                                     listId,
@@ -143,11 +152,22 @@ fun ForYouContent(
                                 )
                                 viewModel.loadAndPlaySong(index, item)
                                 viewModel.setControllerShow(true)
-                            }
+                            },
+                            onRefresh = { viewModel.refreshAllCollection(subItem.dataType) }
                         )
                     }
 
-                    else -> {}
+                    ItemType.ARTIST -> {
+                        ForYouArtists(
+                            playingArtistId = playingArtistId,
+                            isPlaying = isPlaying,
+                            dataList = artistData,
+                            onClick = {
+
+                            },
+                            onRefresh = { viewModel.refreshAllCollection(subItem.dataType) }
+                        )
+                    }
                 }
             }
         }
@@ -155,13 +175,13 @@ fun ForYouContent(
 }
 
 @Composable
-private fun ForYouTracks(
-    title: String = "Tracks",
-    playingTrackId: String = "",
+private fun ForYouArtists(
+    title: String = "Artists",
+    playingArtistId: String = "",
     isPlaying: Boolean = false,
-    isFavourite: (String) -> Boolean = {false},
-    dataList: LazyPagingItems<SingleSong>,
-    onClick: (Int, SingleSong) -> Unit
+    dataList: LazyPagingItems<SongList>,
+    onClick: (SongList) -> Unit,
+    onRefresh: () -> Unit
 ) {
     Column(
         modifier = Modifier.background(
@@ -180,7 +200,10 @@ private fun ForYouTracks(
                     )
                 ),
                 fontWeight = FontWeight(700),
-                fontSize = 20.sp
+                fontSize = 20.sp,
+                modifier = Modifier.clickable(
+                    onClick = onRefresh
+                )
             )
             Spacer(modifier = Modifier.size(10.dp))
             Text(
@@ -196,6 +219,139 @@ private fun ForYouTracks(
         }
         Spacer(modifier = Modifier.size(5.dp))
         // item
+        LazyRow(
+            horizontalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            items(
+                count = dataList.itemCount,
+                key = dataList.itemKey { it.id }
+            ) { index ->
+                val item = dataList[index]
+                item?.apply {
+                    ArtistsItem(
+                        item = item,
+                        isCurrentArtist = playingArtistId == item.id,
+                        isPlaying = isPlaying,
+                        onClick = onClick
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun ArtistsItem(
+    item: SongList,
+    isCurrentArtist: Boolean = false,
+    isPlaying: Boolean = false,
+    onClick: (SongList) -> Unit = {},
+) {
+    Column(
+        modifier = Modifier
+            .clickable(
+                onClick = { onClick.invoke(item) }
+            ),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Box(
+            modifier = Modifier
+                .size(100.dp)
+                .clip(CircleShape),
+            contentAlignment = Alignment.Center
+        ) {
+            AsyncImage(
+                model = item.coverUrl,
+                contentDescription = null,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier
+                    .size(100.dp)
+                    .clip(CircleShape)
+                    .blur(if (isCurrentArtist) 2.dp else 0.dp)
+            )
+
+            if (isCurrentArtist) {
+                Box(
+                    modifier = Modifier
+                        .size(40.dp)
+                        .background(
+                            color = Color(0xffffffff),
+                            shape = CircleShape
+                        ),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = ImageVector.vectorResource(if (isPlaying) R.drawable.icon_pause_solid_full else R.drawable.icon_play_solid_full),
+                        contentDescription = null,
+                        tint = Color(0xff080808),
+                        modifier = Modifier.size(25.dp)
+                    )
+                }
+            }
+        }
+        Spacer(modifier = Modifier.size(5.dp))
+        Text(
+            text = item.title,
+            color = if (isCurrentArtist) Color(0xff00E5FF) else Color(0xffA0A0A0),
+            style = TextStyle(
+                platformStyle = PlatformTextStyle(
+                    includeFontPadding = false
+                )
+            ),
+            fontSize = 16.sp,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
+        )
+    }
+}
+
+@Composable
+private fun ForYouTracks(
+    title: String = "Tracks",
+    playingTrackId: String = "",
+    isPlaying: Boolean = false,
+    isFavourite: (String) -> Boolean = {false},
+    dataList: LazyPagingItems<SingleSong>,
+    onClick: (Int, SingleSong) -> Unit,
+    onRefresh: () -> Unit = {}
+) {
+    Column(
+        modifier = Modifier.background(
+            color = Color.Black
+        ),
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = title,
+                color = Color.White,
+                style = TextStyle(
+                    platformStyle = PlatformTextStyle(
+                        includeFontPadding = false
+                    )
+                ),
+                fontWeight = FontWeight(700),
+                fontSize = 20.sp,
+                modifier = Modifier.clickable(
+                    onClick = onRefresh
+                )
+            )
+            Spacer(modifier = Modifier.size(10.dp))
+            Text(
+                text = "See all",
+                color = Color(0xff00E5FF),
+                style = TextStyle(
+                    platformStyle = PlatformTextStyle(
+                        includeFontPadding = false
+                    )
+                ),
+                fontSize = 14.sp
+            )
+        }
+        Spacer(modifier = Modifier.size(5.dp))
+        // item
+        if (dataList.itemCount == 0) return
         LazyHorizontalGrid(
             rows = GridCells.Fixed(2),
             modifier = Modifier.fillMaxWidth()
@@ -308,7 +464,7 @@ private fun TracksItem(
                     .weight(1f)
             ) {
                 Text(
-                    text = item.title,
+                    text = "${item.title}${if (item.version.isNotBlank()) "（${item.version}）" else ""}",
                     color = if (isCurrentTrack) Color(0xff00E5FF) else Color.White,
                     fontWeight = FontWeight(600),
                     style = TextStyle(
@@ -379,7 +535,8 @@ private fun <T : ItemInfo> ForYouSongList(
     playingListId: String = "",
     isPlaying: Boolean = false,
     dataList: LazyPagingItems<T>,
-    onClick: (ItemInfo) -> Unit = {}
+    onClick: (ItemInfo) -> Unit = {},
+    onRefresh: () -> Unit = {}
 ) {
     Column(
         modifier = Modifier.background(
@@ -398,7 +555,10 @@ private fun <T : ItemInfo> ForYouSongList(
                     )
                 ),
                 fontWeight = FontWeight(700),
-                fontSize = 20.sp
+                fontSize = 20.sp,
+                modifier = Modifier.clickable(
+                    onClick = onRefresh
+                )
             )
             Spacer(modifier = Modifier.size(10.dp))
             Text(
@@ -412,6 +572,7 @@ private fun <T : ItemInfo> ForYouSongList(
                 fontSize = 14.sp
             )
         }
+        Spacer(modifier = Modifier.size(5.dp))
         // 列表
         LazyRow(
             horizontalArrangement = Arrangement.spacedBy(10.dp)
@@ -448,7 +609,6 @@ private fun SongListItem(
                 onClick = { onClick.invoke(item) }
             )
     ) {
-        Spacer(modifier = Modifier.size(5.dp))
         Box(
             modifier = Modifier
                 .size(120.dp)

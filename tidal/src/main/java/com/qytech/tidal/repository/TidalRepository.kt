@@ -44,6 +44,7 @@ import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
+import timber.log.Timber
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -517,31 +518,33 @@ class TidalRepository @Inject constructor(
     /**
      * 获取收藏的艺术家
      */
-    fun getCollectionArtists(userId: String, pageCursor: String? = null): Flow<ArtistList> = flow {
-        emit(api.getCollectionArtists(userId = userId, pageCursor = pageCursor))
-    }.map { response ->
-        val pagination = Pagination(nextCursor = response.links.meta?.nextCursor)
-        val includedData = response.included!!
-        val artworks = includedData.filterIsInstance<ArtworkResource>()
-        val artists = includedData.filterIsInstance<ArtistResource>().map {
-            ArtistDetail(
-                artistInfo = Artist(
-                    id = it.id,
-                    name = it.attributes.name
-                ),
-                profileArts = artworks.filter { artwork -> it.relationships.profileArt.data?.firstOrNull()?.id == artwork.id }
-                    .toCoverArtList()
+    suspend fun getCollectionArtists(userId: String, pageCursor: String? = null): ArtistList {
+        try {
+            val response = api.getCollectionArtists(userId = userId, pageCursor = pageCursor)
+            val pagination = Pagination(nextCursor = response.links.meta?.nextCursor)
+            val includedData = response.included!!
+            val artworks = includedData.filterIsInstance<ArtworkResource>()
+            val artists = includedData.filterIsInstance<ArtistResource>().map {
+                ArtistDetail(
+                    artistInfo = Artist(
+                        id = it.id,
+                        name = it.attributes.name
+                    ),
+                    profileArts = artworks.filter { artwork -> it.relationships.profileArt.data?.firstOrNull()?.id == artwork.id }
+                        .toCoverArtList()
+                )
+            }
+
+            addArtistIdsToCollection(artists.map { it.artistInfo.id })
+
+            return ArtistList(
+                artists = artists,
+                pagination = pagination
             )
+        } catch (e: Exception) {
+            return ArtistList(artists = emptyList(), pagination = Pagination())
         }
-
-        addArtistIdsToCollection(artists.map { it.artistInfo.id })
-
-        ArtistList(
-            artists = artists,
-            pagination = pagination
-        )
-    }.flowOn(Dispatchers.IO)
-        .catch { emit(ArtistList(artists = emptyList(), pagination = Pagination())) }
+    }
 
     /**
      * 收藏艺术家

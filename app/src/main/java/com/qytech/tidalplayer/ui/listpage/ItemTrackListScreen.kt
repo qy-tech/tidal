@@ -157,7 +157,7 @@ private fun Item(
         )
         Spacer(modifier = Modifier.size(10.dp))
         Text(
-            text = item.title,
+            text = "${item.title}${if (item.version.isNotBlank()) "（${item.version}）" else ""}",
             style = TextStyle(
                 platformStyle = PlatformTextStyle(
                     includeFontPadding = false
