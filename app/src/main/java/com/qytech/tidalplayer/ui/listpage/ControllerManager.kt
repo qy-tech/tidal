@@ -1,7 +1,6 @@
 package com.qytech.tidalplayer.ui.listpage
 
 import android.content.Context
-import android.widget.Toast
 import com.qytech.tidal.TidalService
 import com.qytech.tidalplayer.ui.listpage.model.ControllerUiState
 import com.qytech.tidalplayer.ui.listpage.model.SingleSong
@@ -10,7 +9,6 @@ import com.tidal.sdk.player.Player
 import com.tidal.sdk.player.common.model.MediaProduct
 import com.tidal.sdk.player.common.model.ProductType
 import com.tidal.sdk.player.playbackengine.model.Event
-import com.tidal.sdk.player.playbackengine.model.PlaybackState
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -35,6 +33,8 @@ class ControllerManager @Inject constructor(
     val player: Player? = TidalService.getPlayerInstance(context)
     private val _currentListId = MutableStateFlow("")
     val currentListId = _currentListId.asStateFlow()
+    private val _currentSongId = MutableStateFlow("")
+    val currentSongId = _currentSongId.asStateFlow()
     private var currentSongList = arrayListOf<SingleSong>()
     private var currentSongIdSet = hashSetOf<String>()
 
@@ -100,9 +100,6 @@ class ControllerManager @Inject constructor(
                         totalProgress = if (totalProgress >= 0f) totalProgress else 0f
                     )
                 }
-                if (player?.playbackEngine?.playbackState == PlaybackState.STALLED) {
-                    Timber.d("playbackState: ${player?.playbackEngine?.playbackState}")
-                }
                 delay(1)
             }
         }
@@ -143,7 +140,13 @@ class ControllerManager @Inject constructor(
         updateControllerSong(index, song, currentProduct)
     }
 
-    private fun updateControllerSong(currentIndex: Int, currentSong: SingleSong, currentProduct: MediaProduct) {
+    private fun updateControllerSong(
+        currentIndex: Int,
+        currentSong: SingleSong,
+        currentProduct: MediaProduct
+    ) {
+        _currentSongId.update { currentSong.id }
+
         val currentSongList = currentSongList.toList()
 
         val nextIndex = currentIndex + 1

@@ -42,7 +42,7 @@ fun TidalScreen(
                 LoginWebScreen(navController)
             }
             composable(TidalRoute.SONG_LIST_START) {
-                ListStartScreen {
+                ListStartScreen(navController) {
                     activity?.moveTaskToBack(true)
                 }
             }

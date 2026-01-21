@@ -19,6 +19,7 @@ import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
+import timber.log.Timber
 import javax.inject.Inject
 
 @HiltViewModel
@@ -54,6 +55,7 @@ class TidalViewModel @Inject constructor(
     val isLoggedIn = tidalLogin.loginUiState
         .map { state ->
             val cacheLoggedIn = !tidalCacheManager.getUserInfo()?.id.isNullOrBlank()
+            Timber.d("cache login state.isLoggedIn:${state.isLoggedIn}, cacheLoggedIn: ${cacheLoggedIn}")
             state.isLoggedIn || cacheLoggedIn
         }
         .stateIn(

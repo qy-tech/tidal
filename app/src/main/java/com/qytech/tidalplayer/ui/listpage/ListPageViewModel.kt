@@ -12,31 +12,42 @@ import com.qytech.tidal.data.Artist
 import com.qytech.tidal.data.CoverArt
 import com.qytech.tidal.data.Playlist
 import com.qytech.tidal.data.TrackDetail
+import com.qytech.tidal.data.UserInfo
 import com.qytech.tidal.data.paging.Pagination
 import com.qytech.tidal.data.toDisplayDuration
+import com.qytech.tidal.login.TidalLogin
 import com.qytech.tidal.repository.TidalRepository
 import com.qytech.tidalplayer.ui.TidalPagingSource
 import com.qytech.tidalplayer.ui.listpage.model.DataType
 import com.qytech.tidalplayer.ui.listpage.model.SingleSong
 import com.qytech.tidalplayer.ui.listpage.model.SongList
+import com.qytech.tidalplayer.utils.ToastUtils
+import com.tidal.sdk.player.events.model.User
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.flowOn
+import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
 import timber.log.Timber
 import javax.inject.Inject
 
 @HiltViewModel
 class ListPageViewModel @Inject constructor(
     private val controllerManager: ControllerManager,
+    private val tidalLogin: TidalLogin,
     private val tidalCacheManager: TidalCacheManager,
     private val tidalRepository: TidalRepository
 ) : ViewModel() {
 
     val controllerUiState = controllerManager.controllerUiState
     val currentListId = controllerManager.currentListId
+    val currentSongId = controllerManager.currentSongId
+    val userInfo = MutableStateFlow<UserInfo?>(null)
+    val checkAuth = MutableStateFlow(true)
 
-    val playlistPagingData = Pager(
+    val collectionPlaylistPagingData = Pager(
         config = PagingConfig(20),
         pagingSourceFactory = {
             TidalPagingSource(
@@ -66,7 +77,7 @@ class ListPageViewModel @Inject constructor(
         .flowOn(Dispatchers.IO)
         .cachedIn(viewModelScope)
 
-    val albumPagingData = Pager(
+    val collectionAlbumPagingData = Pager(
         config = PagingConfig(20),
         pagingSourceFactory = {
             TidalPagingSource(
@@ -93,6 +104,37 @@ class ListPageViewModel @Inject constructor(
     ).flow
         .flowOn(Dispatchers.IO)
         .cachedIn(viewModelScope)
+
+    val collectionTracksPagingData = Pager(
+        config = PagingConfig(20),
+        pagingSourceFactory = {
+            TidalPagingSource(
+                fetchData = { cursor ->
+                    val userId = tidalCacheManager.getUserInfo()?.id
+                    if (userId.isNullOrBlank()) {
+                        emptyList<TrackDetail>() to Pagination()
+                    } else {
+                        val response = tidalRepository.getCollectionTracks(userId, cursor)
+                        response.tracks to response.pagination
+                    }
+                },
+                toUiModel = { res ->
+                    SingleSong(
+                        id = res.trackInfo.id,
+                        title = res.trackInfo.title,
+                        duration = res.trackInfo.duration.toDisplayDuration(),
+                        coverUrl = getCoverUrl(res.album.coverArts),
+                        description = getArtistStr(res.artists),
+                        dataType = DataType.TRACK
+                    )
+                }
+            )
+        }
+    ).flow
+        .flowOn(Dispatchers.IO)
+        .cachedIn(viewModelScope)
+
+
 
     fun getPlaylistItemPagingData(listId: String, dataType: Int): Flow<PagingData<SingleSong>> {
         Timber.d("getPlaylistItemPagingData listId: $listId, dataType: $dataType")
@@ -158,6 +200,19 @@ class ListPageViewModel @Inject constructor(
             .cachedIn(viewModelScope)
     }
 
+    fun checkAuth() {
+        viewModelScope.launch {
+            try {
+                tidalRepository.getUser().collect { user ->
+                    userInfo.update { user }
+                }
+                checkAuth.update { true }
+            } catch (e: Exception) {
+                checkAuth.update { false }
+            }
+        }
+    }
+
     private fun getArtistStr(artists: List<Artist>): String {
         return if (artists.isEmpty()) {
             "Unknown artist"
@@ -208,5 +263,13 @@ class ListPageViewModel @Inject constructor(
 
     fun setDragProgress(dragProgress: Float?) {
         controllerManager.setDragProgress(dragProgress)
+    }
+
+    fun clearCacheUserInfo() {
+        tidalLogin.logout()
+    }
+
+    fun checkFavouriteTrack(trackId: String): Boolean {
+        return tidalRepository.checkTrackIsCollected(trackId)
     }
 }

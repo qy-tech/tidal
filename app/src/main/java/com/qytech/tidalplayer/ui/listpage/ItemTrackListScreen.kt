@@ -38,7 +38,7 @@ fun ItemTrackListScreen(
     listId: String,
     dataType: Int,
 
-) {
+    ) {
     val viewModel: ListPageViewModel = hiltViewModel()
     val currentListId by viewModel.currentListId.collectAsState()
     val pagingItem = remember {
@@ -81,7 +81,13 @@ fun ItemTrackListScreen(
                     onClick = { index, currentSong ->
                         // 将所有歌曲id添加到控制器中
                         viewModel.setCurrentListId(listId)
-                        viewModel.setCurrentSongList(listId, pagingItem.itemSnapshotList.items.subList((index - 5).coerceAtLeast(0), (index + 6).coerceAtMost(pagingItem.itemCount)))
+                        viewModel.setCurrentSongList(
+                            listId,
+                            pagingItem.itemSnapshotList.items.subList(
+                                (index - 5).coerceAtLeast(0),
+                                (index + 6).coerceAtMost(pagingItem.itemCount)
+                            )
+                        )
                         viewModel.loadAndPlaySong(index, currentSong)
                         viewModel.setControllerShow(true)
                     }

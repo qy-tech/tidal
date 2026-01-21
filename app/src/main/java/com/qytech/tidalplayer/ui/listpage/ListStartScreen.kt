@@ -27,6 +27,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
@@ -47,11 +48,14 @@ import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.text.PlatformTextStyle
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.max
 import androidx.compose.ui.unit.sp
 import androidx.constraintlayout.compose.ConstraintLayout
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.navigation.NavHostController
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -62,14 +66,17 @@ import com.qytech.tidalplayer.R
 import com.qytech.tidalplayer.ui.TidalRoute
 import com.qytech.tidalplayer.ui.listpage.components.CustomThinSlider
 import com.qytech.tidalplayer.ui.listpage.model.SingleSong
+import com.qytech.tidalplayer.utils.ToastUtils
 import com.tidal.sdk.player.playbackengine.model.PlaybackState
 
 @Composable
 fun ListStartScreen(
+    parentNavController: NavHostController,
     onBack: () -> Unit
 ) {
     val navController = rememberNavController()
     val viewModel: ListPageViewModel = hiltViewModel()
+    val checkAuth by viewModel.checkAuth.collectAsState()
     val controllerUiState by viewModel.controllerUiState.collectAsState()
     val showController by remember {
         derivedStateOf {
@@ -91,7 +98,10 @@ fun ListStartScreen(
             controllerUiState.currentSong
         }
     }
-    var nextSong by remember { mutableStateOf(SingleSong()) }
+
+    LaunchedEffect(Unit) {
+        viewModel.checkAuth()
+    }
 
     ConstraintLayout() {
         val (nav, controller, floatButton) = createRefs()
@@ -216,6 +226,14 @@ fun ListStartScreen(
                 }
             )
         }
+
+        if (!checkAuth) {
+            ToastUtils.show("权限不足，重新登录")
+            viewModel.clearCacheUserInfo()
+            parentNavController.navigate(TidalRoute.LOGIN_START) {
+                popUpTo(TidalRoute.SONG_LIST_START)
+            }
+        }
     }
 }
 
@@ -302,13 +320,15 @@ private fun MusicController(
                 Text(
                     text = currentSong.title,
                     color = Color.White,
-                    fontWeight = FontWeight(700),
+                    fontWeight = FontWeight(600),
                     style = TextStyle(
                         platformStyle = PlatformTextStyle(
                             includeFontPadding = false
                         )
                     ),
-                    fontSize = 20.sp
+                    fontSize = 20.sp,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
                 )
                 Spacer(modifier = Modifier.size(5.dp))
                 Text(
@@ -320,7 +340,9 @@ private fun MusicController(
                             includeFontPadding = false
                         )
                     ),
-                    fontSize = 16.sp
+                    fontSize = 16.sp,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
                 )
             }
 

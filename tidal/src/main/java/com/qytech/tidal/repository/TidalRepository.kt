@@ -453,8 +453,8 @@ class TidalRepository @Inject constructor(
     /**
      * 获取收藏的单曲
      */
-    fun getCollectionTracks(userId: String, pageCursor: String? = null): Flow<PlaylistTracks> =
-        flow {
+    suspend fun getCollectionTracks(userId: String, pageCursor: String? = null): PlaylistTracks {
+        try {
             val collectionResponse =
                 api.getCollectionTracks(userId = userId, pageCursor = pageCursor)
             val pagination = Pagination(nextCursor = collectionResponse.links.meta?.nextCursor)
@@ -465,20 +465,17 @@ class TidalRepository @Inject constructor(
 
             addTrackIdsToCollection(trackIds)
 
-            emit(
-                PlaylistTracks(
-                    tracks = tracks,
-                    pagination = pagination
-                )
+            return PlaylistTracks(
+                tracks = tracks,
+                pagination = pagination
             )
-        }.flowOn(Dispatchers.IO).catch {
-            emit(
-                PlaylistTracks(
-                    tracks = emptyList(),
-                    pagination = Pagination()
-                )
+        } catch (e: Exception) {
+            return PlaylistTracks(
+                tracks = emptyList(),
+                pagination = Pagination()
             )
         }
+    }
 
     /**
      * 收藏单曲
