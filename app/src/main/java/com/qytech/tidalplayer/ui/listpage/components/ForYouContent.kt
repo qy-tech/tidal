@@ -121,7 +121,13 @@ fun ForYouContent(
                             },
                             onClick = { item ->
                                 // 跳转到单曲界面
-                                val route = TidalRoute.getItemTrackListRoute(item.id, item.dataType)
+                                val route = TidalRoute.getItemTrackListRoute(
+                                    listId = item.id,
+                                    dataType = item.dataType,
+                                    coverUrl = item.coverUrl,
+                                    title = item.title,
+                                    description = item.description
+                                )
                                 navController.navigate(route)
                             },
                             onRefresh = {
@@ -464,7 +470,7 @@ private fun TracksItem(
                     .weight(1f)
             ) {
                 Text(
-                    text = "${item.title}${if (item.version.isNotBlank()) "（${item.version}）" else ""}",
+                    text = item.getDetailTitle(),
                     color = if (isCurrentTrack) Color(0xff00E5FF) else Color.White,
                     fontWeight = FontWeight(600),
                     style = TextStyle(
@@ -597,10 +603,10 @@ private fun <T : ItemInfo> ForYouSongList(
 
 @Composable
 private fun SongListItem(
+    modifier: Modifier = Modifier,
     item: ItemInfo,
     isCurrentList: Boolean = true,
     isPlaying: Boolean = false,
-    modifier: Modifier = Modifier,
     onClick: (ItemInfo) -> Unit = {},
 ) {
     Column(

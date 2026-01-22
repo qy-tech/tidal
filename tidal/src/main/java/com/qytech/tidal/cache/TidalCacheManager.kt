@@ -4,6 +4,7 @@ import com.qytech.tidal.data.PageArguments
 import com.qytech.tidal.data.Playlist
 import com.qytech.tidal.data.UserInfo
 import com.tencent.mmkv.MMKV
+import timber.log.Timber
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -50,6 +51,7 @@ class TidalCacheManager @Inject constructor(
 
     fun clearUserInfo() {
         mmkv.remove(CacheKey.USER_INFO)
+        Timber.d("isLoggedIn cacheLoggedIn clear")
     }
 
 }

@@ -10,7 +10,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -25,22 +24,29 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.navigation.NavController
 import androidx.paging.LoadState
 import androidx.paging.compose.LazyPagingItems
 import androidx.paging.compose.collectAsLazyPagingItems
 import coil3.compose.AsyncImage
+import com.qytech.tidalplayer.ui.listpage.components.SongListView
 import com.qytech.tidalplayer.ui.listpage.model.DataType
 import com.qytech.tidalplayer.ui.listpage.model.SingleSong
+import com.qytech.tidalplayer.utils.popBackSafely
 import kotlinx.coroutines.flow.emptyFlow
 
 @Composable
 fun ItemTrackListScreen(
+    navController: NavController,
     listId: String,
     dataType: Int,
-
-    ) {
+    coverUrl: String?,
+    title: String,
+    description: String?,
+) {
     val viewModel: ListPageViewModel = hiltViewModel()
     val currentListId by viewModel.currentListId.collectAsState()
+    val currentSongId by viewModel.currentSongId.collectAsState()
     val pagingItem = remember {
         when (dataType) {
             DataType.PLAY_LIST.ordinal -> viewModel.getPlaylistItemPagingData(listId, dataType)
@@ -57,124 +63,38 @@ fun ItemTrackListScreen(
             }
         }
     }
-
     Box(
         modifier = Modifier
             .fillMaxSize()
             .background(
                 color = Color(0xff080808)
             ),
+        contentAlignment = Alignment.Center
     ) {
-        when (pagingItem.loadState.refresh) {
-            is LoadState.Loading -> {
-                Box(
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center
-                ) {
-                    CircularProgressIndicator()
-                }
-            }
-
-            is LoadState.NotLoading -> {
-                ItemList(
-                    itemList = pagingItem,
-                    onClick = { index, currentSong ->
-                        // 将所有歌曲id添加到控制器中
-                        viewModel.setCurrentListId(listId)
-                        viewModel.setCurrentSongList(
-                            listId,
-                            pagingItem.itemSnapshotList.items.subList(
-                                (index - 5).coerceAtLeast(0),
-                                (index + 6).coerceAtMost(pagingItem.itemCount)
-                            )
-                        )
-                        viewModel.loadAndPlaySong(index, currentSong)
-                        viewModel.setControllerShow(true)
-                    }
+        SongListView(
+            coverUrl = coverUrl,
+            title = title,
+            description = description,
+            daraList = pagingItem,
+            currentSongId = currentSongId,
+            isFavourite = viewModel::checkFavouriteTrack,
+            onItemClick = { index, currentSong ->
+                // 将所有歌曲id添加到控制器中
+                viewModel.setCurrentListId(listId)
+                viewModel.setCurrentSongList(
+                    listId,
+                    pagingItem.itemSnapshotList.items.subList(
+                        (index - 5).coerceAtLeast(0),
+                        (index + 6).coerceAtMost(pagingItem.itemCount)
+                    )
                 )
+                viewModel.loadAndPlaySong(index, currentSong)
+                viewModel.setControllerShow(true)
+
+            },
+            onBack = {
+                navController.popBackSafely()
             }
-
-            is LoadState.Error -> {
-
-            }
-        }
-    }
-}
-
-@Composable
-private fun ItemList(
-    itemList: LazyPagingItems<SingleSong>,
-    onClick: (index: Int, currentSong: SingleSong) -> Unit
-) {
-    LazyColumn() {
-        items(
-            count = itemList.itemCount
-        ) { index ->
-            val item = itemList[index]
-            if (item != null) {
-                Item(
-                    item = item,
-                    onClick = { currentSong ->
-                        onClick.invoke(index, currentSong)
-                    }
-                )
-            }
-        }
-    }
-
-    if (itemList.itemCount == 0) {
-        Box(
-            modifier = Modifier.fillMaxSize(),
-            contentAlignment = Alignment.Center
-        ) {
-            Text(
-                text = "暂无数据",
-                fontSize = 25.sp,
-                color = Color.White,
-                letterSpacing = 10.sp
-            )
-        }
-    }
-}
-
-@Composable
-private fun Item(
-    item: SingleSong,
-    onClick: (SingleSong) -> Unit
-) {
-    Row(
-        modifier = Modifier
-            .height(50.dp)
-            .fillMaxSize()
-            .padding(horizontal = 10.dp)
-            .clickable(onClick = { onClick.invoke(item) }),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        AsyncImage(
-            model = item.coverUrl,
-            contentDescription = null,
-            modifier = Modifier.size(40.dp)
-        )
-        Spacer(modifier = Modifier.size(10.dp))
-        Text(
-            text = "${item.title}${if (item.version.isNotBlank()) "（${item.version}）" else ""}",
-            style = TextStyle(
-                platformStyle = PlatformTextStyle(
-                    includeFontPadding = false
-                )
-            ),
-            color = Color.White,
-            modifier = Modifier.weight(1f)
-        )
-
-        Text(
-            text = item.duration,
-            style = TextStyle(
-                platformStyle = PlatformTextStyle(
-                    includeFontPadding = false
-                )
-            ),
-            color = Color.White,
         )
     }
 }

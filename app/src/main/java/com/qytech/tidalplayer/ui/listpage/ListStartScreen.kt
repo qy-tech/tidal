@@ -31,9 +31,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -52,7 +50,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.max
 import androidx.compose.ui.unit.sp
 import androidx.constraintlayout.compose.ConstraintLayout
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
@@ -144,12 +141,32 @@ fun ListStartScreen(
                     navArgument("dataType") {
                         type = NavType.IntType
                         defaultValue = -1
+                    },
+                    navArgument("coverUrl") {
+                        type = NavType.StringType
+                    },
+                    navArgument("title") {
+                        type = NavType.StringType
+                        defaultValue = ""
+                    },
+                    navArgument("description") {
+                        type = NavType.StringType
                     }
                 )
             ) {
                 val listId = it.arguments?.getString("listId") ?: ""
                 val dataType = it.arguments?.getInt("dataType") ?: -1
-                ItemTrackListScreen(listId, dataType)
+                val coverUrl = it.arguments?.getString("coverUrl")
+                val title = it.arguments?.getString("title") ?: ""
+                val description = it.arguments?.getString("description")
+                ItemTrackListScreen(
+                    navController = navController,
+                    listId = listId,
+                    dataType = dataType,
+                    coverUrl = coverUrl,
+                    title = title,
+                    description = description
+                )
             }
         }
 
@@ -238,7 +255,7 @@ fun ListStartScreen(
 
         if (!checkAuth) {
             ToastUtils.show("权限不足，重新登录")
-            viewModel.clearCacheUserInfo()
+            viewModel.logout()
             parentNavController.navigate(TidalRoute.LOGIN_START) {
                 popUpTo(TidalRoute.SONG_LIST_START)
             }
@@ -329,7 +346,7 @@ private fun MusicController(
                     .wrapContentHeight()
             ) {
                 Text(
-                    text = currentSong.title,
+                    text = currentSong.getDetailTitle(),
                     color = Color.White,
                     fontWeight = FontWeight(600),
                     style = TextStyle(
@@ -492,7 +509,8 @@ private fun Controller(
                     imageVector = ImageVector.vectorResource(R.drawable.icon_spinner_solid_full),
                     contentDescription = null,
                     tint = Color(0xff080808),
-                    modifier = Modifier.size(25.dp)
+                    modifier = Modifier
+                        .size(25.dp)
                         .rotate(angle)
                 )
             } else {
@@ -664,7 +682,8 @@ private fun PulsingMusicButton(
                     imageVector = ImageVector.vectorResource(R.drawable.icon_spinner_solid_full),
                     contentDescription = null,
                     tint = TidalCyan,
-                    modifier = Modifier.matchParentSize()
+                    modifier = Modifier
+                        .matchParentSize()
                         .rotate(angle)
                 )
             } else {

@@ -20,17 +20,14 @@ import com.qytech.tidal.login.TidalLogin
 import com.qytech.tidal.repository.TidalRepository
 import com.qytech.tidalplayer.ui.TidalPagingSource
 import com.qytech.tidalplayer.ui.listpage.model.DataType
-import com.qytech.tidalplayer.ui.listpage.model.ItemType
 import com.qytech.tidalplayer.ui.listpage.model.SingleSong
 import com.qytech.tidalplayer.ui.listpage.model.SongList
 import com.qytech.tidalplayer.utils.ToastUtils
-import com.tidal.sdk.player.events.model.User
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.update
@@ -138,6 +135,8 @@ class ListPageViewModel @Inject constructor(
                             duration = res.trackInfo.duration.toDisplayDuration(),
                             coverUrl = getCoverUrl(res.album.coverArts),
                             description = getArtistStr(res.artists),
+                            artists = res.artists,
+                            album = res.album,
                             version = res.trackInfo.version,
                             dataType = DataType.TRACK
                         )
@@ -198,6 +197,8 @@ class ListPageViewModel @Inject constructor(
                             duration = res.trackInfo.duration.toDisplayDuration(),
                             coverUrl = getCoverUrl(res.album.coverArts),
                             description = getArtistStr(res.artists),
+                            artists = res.artists,
+                            album = res.album,
                             version = res.trackInfo.version,
                             dataType = DataType.TRACK
                         )
@@ -231,6 +232,8 @@ class ListPageViewModel @Inject constructor(
                             duration = res.trackInfo.duration.toDisplayDuration(),
                             coverUrl = getCoverUrl(res.album.coverArts),
                             description = getArtistStr(res.artists),
+                            artists = res.artists,
+                            album = res.album,
                             version = res.trackInfo.version,
                             dataType = DataType.TRACK
                         )
@@ -257,7 +260,7 @@ class ListPageViewModel @Inject constructor(
                         if (e.message?.contains("HTTP 401") == true) {
                             checkAuth.update { false }
                         } else {
-                            ToastUtils.show(e.message ?: "")
+                            ToastUtils.show(e.message ?: "异常错误")
                         }
                     }
                 }
@@ -317,7 +320,7 @@ class ListPageViewModel @Inject constructor(
         controllerManager.setDragProgress(dragProgress)
     }
 
-    fun clearCacheUserInfo() {
+    fun logout() {
         tidalLogin.logout()
     }
 

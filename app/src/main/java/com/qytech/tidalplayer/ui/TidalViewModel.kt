@@ -45,6 +45,8 @@ class TidalViewModel @Inject constructor(
     val isLoggedIn = tidalLogin.loginUiState
         .map { state ->
             val cacheLoggedIn = !tidalCacheManager.getUserInfo()?.id.isNullOrBlank()
+
+            Timber.d("isLoggedIn: ${state.isLoggedIn}, cacheLoggedIn: ${cacheLoggedIn}")
             state.isLoggedIn || cacheLoggedIn
         }
         .stateIn(

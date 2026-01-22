@@ -11,10 +11,16 @@ object TidalRoute {
     const val SONG_LIST = "song_list"
     const val USER_INFO = "user_info"
     const val SEARCH_SONG = "search_song"
-    const val ITEM_TRACK_LIST = "item_track_list?listId={listId}&dataType={dataType}" // 是list中的item
+    const val ITEM_TRACK_LIST = "item_track_list?listId={listId}&dataType={dataType}&coverUrl={coverUrl}&title={title}&description={description}" // 是list中的item
     const val TRACK_LIST_2 = "track_list_2" // 单独的item list
 
-    fun getItemTrackListRoute(listId: String, dataType: DataType): String {
-        return "item_track_list?listId=${listId}&dataType=${dataType.ordinal}"
+    fun getItemTrackListRoute(
+        listId: String,
+        dataType: DataType,
+        coverUrl: String?,
+        title: String,
+        description: String?
+    ): String {
+        return "item_track_list?listId=${listId}&dataType=${dataType.ordinal}&coverUrl=${coverUrl}&title=${title}&description=${description}"
     }
 }
