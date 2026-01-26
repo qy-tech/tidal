@@ -3,12 +3,11 @@ package com.qytech.tidalplayer.ui
 import androidx.paging.PagingSource
 import androidx.paging.PagingState
 import com.qytech.tidal.data.paging.Pagination
-import kotlin.text.isNullOrBlank
 
-class TidalPagingSource<RESPONSE, UI_MODEL: Any>(
+class TidalPagingSource<RESPONSE, UI_MODEL : Any>(
     private val fetchData: suspend (cursor: String?) -> Pair<List<RESPONSE>, Pagination>,
     val toUiModel: (RESPONSE) -> UI_MODEL,
-): PagingSource<String, UI_MODEL>() {
+) : PagingSource<String, UI_MODEL>() {
     override fun getRefreshKey(state: PagingState<String, UI_MODEL>): String? {
         return null
     }

@@ -46,8 +46,8 @@ class TidalViewModel @Inject constructor(
         .map { state ->
             val cacheLoggedIn = !tidalCacheManager.getUserInfo()?.id.isNullOrBlank()
 
-            Timber.d("isLoggedIn: ${state.isLoggedIn}, cacheLoggedIn: ${cacheLoggedIn}")
-            state.isLoggedIn || cacheLoggedIn
+            Timber.d("isLoggedIn: ${state.isLoggedIn}, cacheLoggedIn: ${cacheLoggedIn}, cacheClear: ${state.cacheClear}")
+            state.isLoggedIn || (cacheLoggedIn && !state.cacheClear)
         }
         .stateIn(
             scope = viewModelScope,

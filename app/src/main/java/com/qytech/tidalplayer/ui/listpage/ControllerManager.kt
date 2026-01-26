@@ -43,6 +43,9 @@ class ControllerManager @Inject constructor(
     private val _controllerUiState = MutableStateFlow(ControllerUiState())
     val controllerUiState = _controllerUiState.asStateFlow()
 
+    private val _favouriteTrackIds = MutableStateFlow<Set<String>>(emptySet())
+    val favouriteTrackIds = _favouriteTrackIds.asStateFlow()
+
     private var eventCollectionJob: Job? = null
     private var itemPollingJob: Job? = null
 
@@ -57,7 +60,7 @@ class ControllerManager @Inject constructor(
                         val currentProduct = _controllerUiState.value.nextProduct
                         if (value.mediaProduct.referenceId != _controllerUiState.value.currentProduct?.referenceId) {
                             if (currentSong != null && currentProduct != null) {
-                                updateControllerSong(currentIndex, currentSong, currentProduct)
+                                updateControllerSong(currentIndex, currentSong, currentProduct, false)
                             }
                         }
                     }
@@ -105,10 +108,22 @@ class ControllerManager @Inject constructor(
                 delay(200)
             }
         }
+
+
     }
 
-    fun setCurrentArtistId(artistId: String) {
-        _currentArtistId.update { artistId }
+    fun removeTrackCollection(trackId: String) {
+        _favouriteTrackIds.update { it - trackId}
+    }
+
+    fun addTrackCollection(trackId: String) {
+        _favouriteTrackIds.update { it + trackId }
+    }
+
+    fun clearIds() {
+        _currentListId.update { "" }
+        _currentSongId.update { "" }
+        _currentArtistId.update { "" }
     }
 
     fun setCurrentListId(listId: String) {
@@ -149,28 +164,43 @@ class ControllerManager @Inject constructor(
     private fun updateControllerSong(
         currentIndex: Int,
         currentSong: SingleSong,
-        currentProduct: MediaProduct
+        currentProduct: MediaProduct,
+        isInit: Boolean = true
     ) {
         _currentSongId.update { currentSong.id }
+        Timber.d("updateControllerSong currentSongListId: ${currentListId.value}")
 
         val currentSongList = currentSongList.toList()
+        Timber.d("updateControllerSong currentSongList: ${currentSongList[currentSongList.size - 1]}")
 
         val nextIndex = currentIndex + 1
         val beforeIndex = currentIndex - 1
 
+        Timber.d("updateControllerSong nextIndex: $nextIndex, beforeIndex: $beforeIndex")
+
         var nextSong: SingleSong? = null
         var beforeSong: SingleSong? = null
 
-        if (nextIndex in 0..currentSongList.lastIndex) {
-            nextSong = currentSongList[nextIndex]
-        }
-
-        if (beforeIndex in 0..currentSongList.lastIndex) {
-            beforeSong = currentSongList[beforeIndex]
+        if (isInit) {
+            val indexOf = currentSongList.indexOf(currentSong)
+            if (indexOf + 1 in 0..currentSongList.lastIndex) {
+                nextSong = currentSongList[indexOf + 1]
+            }
+            if (indexOf - 1 in 0..currentSongList.lastIndex) {
+                beforeSong = currentSongList[indexOf - 1]
+            }
+        } else {
+            if (nextIndex in 0..currentSongList.lastIndex) {
+                nextSong = currentSongList[nextIndex]
+            }
+            if (beforeIndex in 0..currentSongList.lastIndex) {
+                beforeSong = currentSongList[beforeIndex]
+            }
         }
 
         var nextProduct: MediaProduct? = null
         var beforeProduct: MediaProduct? = null
+
 
         if (nextSong != null) {
             nextProduct = createMediaProduct(nextSong.id)
@@ -218,7 +248,7 @@ class ControllerManager @Inject constructor(
                 playbackEngine.load(nextProduct)
                 playSong()
             }
-            updateControllerSong(nextIndex, nextSong, nextProduct)
+            updateControllerSong(nextIndex, nextSong, nextProduct, false)
         }
     }
 
@@ -231,7 +261,7 @@ class ControllerManager @Inject constructor(
                 playbackEngine.load(beforeProduct)
                 playSong()
             }
-            updateControllerSong(beforeIndex, beforeSong, beforeProduct)
+            updateControllerSong(beforeIndex, beforeSong, beforeProduct, false)
         }
     }
 

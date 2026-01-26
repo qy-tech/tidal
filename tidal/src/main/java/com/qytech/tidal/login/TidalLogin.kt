@@ -16,11 +16,13 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import javax.inject.Inject
 import javax.inject.Singleton
 
 data class LoginUiState(
     val isLoggedIn: Boolean = false,
+    val cacheClear: Boolean = false,
     val handleState: LoginHandleState? = null,
     val userCode: String? = null,
     val deviceCode: String? = null,
@@ -134,27 +136,29 @@ class TidalLogin @Inject constructor(
             val userId = TidalService.credentialsProvider?.getCredentials()?.successData?.userId
             val isLoggedIn = TidalService.credentialsProvider?.isUserLoggedIn() == true
             if (userToken != null) {
+                tidalCacheManager.saveUserInfo(userInfo = UserInfo(
+                    id = userId ?: "",
+                    token = userToken
+                ))
                 _loginUiState.update {
                     it.copy(
-                        isLoggedIn = isLoggedIn
+                        isLoggedIn = isLoggedIn,
+                        cacheClear = false
                     )
                 }
             }
-            tidalCacheManager.saveUserInfo(userInfo = UserInfo(
-                id = userId ?: "",
-                token = userToken
-            ))
         }
     }
 
-    fun logout() {
-        loginScope.launch {
+    suspend fun logout() {
+        withContext(Dispatchers.IO) {
             TidalService.tidalAuth?.auth?.logout()
             // 需要缓存清除
             tidalCacheManager.clearUserInfo()
             _loginUiState.update {
                 it.copy(
-                    isLoggedIn = false
+                    isLoggedIn = false,
+                    cacheClear = true
                 )
             }
         }

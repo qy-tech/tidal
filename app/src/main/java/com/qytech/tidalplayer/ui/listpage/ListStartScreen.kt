@@ -39,6 +39,7 @@ import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
@@ -66,6 +67,7 @@ import com.qytech.tidalplayer.ui.listpage.components.CustomThinSlider
 import com.qytech.tidalplayer.ui.listpage.model.SingleSong
 import com.qytech.tidalplayer.utils.ToastUtils
 import com.tidal.sdk.player.playbackengine.model.PlaybackState
+import timber.log.Timber
 
 @Composable
 fun ListStartScreen(
@@ -101,9 +103,21 @@ fun ListStartScreen(
             controllerUiState.currentSong
         }
     }
+    val favouriteTracks by viewModel.collectionTrackIds.collectAsState()
 
     LaunchedEffect(Unit) {
         viewModel.checkAuth()
+    }
+
+    LaunchedEffect(checkAuth) {
+        if (!checkAuth) {
+            ToastUtils.show("权限不足，重新登录")
+            viewModel.logout()
+            parentNavController.popBackStack(
+                route = TidalRoute.LOGIN_START,
+                inclusive = false
+            )
+        }
     }
 
     ConstraintLayout() {
@@ -168,6 +182,48 @@ fun ListStartScreen(
                     description = description
                 )
             }
+            composable(
+                route = TidalRoute.PLAYLIST_ALBUM_LIST,
+                arguments = listOf(
+                    navArgument("artistId") {
+                        type = NavType.StringType
+                        defaultValue = ""
+                    },
+                    navArgument("dataType") {
+                        type = NavType.IntType
+                        defaultValue = -1
+                    },
+                    navArgument("title") {
+                        type = NavType.StringType
+                        defaultValue = ""
+                    },
+                )
+            ) {
+                val artistId = it.arguments?.getString("artistId") ?: ""
+                val dataType = it.arguments?.getInt("dataType") ?: -1
+                val title = it.arguments?.getString("title") ?: ""
+                PlaylistAlbumScreen(
+                    navController = navController,
+                    artistId = artistId,
+                    title = title,
+                    dataType = dataType
+                )
+            }
+            composable(
+                route = TidalRoute.ARTIST_LIST,
+                arguments = listOf(
+                    navArgument("title") {
+                        type = NavType.StringType
+                        defaultValue = ""
+                    },
+                )
+            ) {
+                val title = it.arguments?.getString("title") ?: ""
+                ArtistScreen(
+                    navController = navController,
+                    title = title
+                )
+            }
         }
 
         if (showController) {
@@ -191,8 +247,9 @@ fun ListStartScreen(
                 val content = createRef()
                 MusicController(
                     currentSong = currentSong,
+                    isIdle = isPlayerIdle,
                     isPlaying = isPlaying,
-                    isFavourite = viewModel.checkFavouriteTrack(currentSong.id),
+                    isFavourite = { id -> favouriteTracks.contains(id) },
                     isBuffering = isBuffering,
                     sliderEnabled = !isPlayerIdle,
                     progress = controllerUiState.currentProgress,
@@ -236,6 +293,17 @@ fun ListStartScreen(
                     },
                     onHidden = {
                         viewModel.setControllerShow(false)
+                    },
+                    onFavourite = { trackId, isFavourite ->
+                        val state = controllerUiState.playbackState
+                        if (state != null && state != PlaybackState.IDLE) {
+                            if (isFavourite) {
+                                viewModel.removeTrackToCollection(trackId)
+                            } else {
+                                viewModel.addTrackToCollection(trackId)
+                            }
+                        }
+
                     }
                 )
             }
@@ -253,13 +321,6 @@ fun ListStartScreen(
             )
         }
 
-        if (!checkAuth) {
-            ToastUtils.show("权限不足，重新登录")
-            viewModel.logout()
-            parentNavController.navigate(TidalRoute.LOGIN_START) {
-                popUpTo(TidalRoute.SONG_LIST_START)
-            }
-        }
     }
 }
 
@@ -268,8 +329,9 @@ fun ListStartScreen(
 private fun MusicController(
     modifier: Modifier = Modifier,
     currentSong: SingleSong = SingleSong(),
+    isIdle: Boolean = true,
     isPlaying: Boolean = false,
-    isFavourite: Boolean = false,
+    isFavourite: (String) -> Boolean = {false},
     isBuffering: Boolean = false,
     progress: Float = 0f,
     totalProgress: Float = 0f,
@@ -280,7 +342,8 @@ private fun MusicController(
     onPlayOrPause: () -> Unit = {},
     onForward: () -> Unit = {},
     onBackward: () -> Unit = {},
-    onHidden: () -> Unit = {}
+    onHidden: () -> Unit = {},
+    onFavourite: (String, Boolean) -> Unit = {_, _ ->}
 ) {
     ConstraintLayout(
         modifier = modifier
@@ -325,20 +388,58 @@ private fun MusicController(
                 .padding(horizontal = 10.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            AsyncImage(
-                model = currentSong.coverUrl,
-                contentDescription = null,
-                modifier = Modifier
-                    .size(60.dp)
-                    .clip(
-                        shape = RoundedCornerShape(10.dp)
+            if (!isIdle) {
+                AsyncImage(
+                    model = currentSong.coverUrl,
+                    contentDescription = null,
+                    modifier = Modifier
+                        .size(60.dp)
+                        .clip(
+                            shape = RoundedCornerShape(10.dp)
+                        )
+                        .shadow(
+                            elevation = 10.dp,
+                            shape = RoundedCornerShape(10.dp),
+                            clip = false
+                        )
+                )
+            } else {
+                Box(
+                    contentAlignment = Alignment.Center,
+                    modifier = Modifier
+                        .size(60.dp) // 你的封面尺寸
+                        .background(
+                            brush = Brush.linearGradient(
+                                colors = listOf(
+                                    Color.Black,       // 左上：黑 (阴影)
+                                    Color(0xFF111111),          // 中间：基础色
+                                    Color(0xFF333333)       // 右下：亮 (反光)
+                                ),
+                                start = Offset.Zero,
+                                end = Offset.Infinite // 对角线方向
+                            ),
+                            shape = RoundedCornerShape(10.dp)
+                        )
+                        .clip(
+                            shape = RoundedCornerShape(10.dp)
+                        )
+                        .shadow(
+                            elevation = 10.dp,
+                            shape = RoundedCornerShape(10.dp),
+                            clip = false
+                        )
+                        // 加一个极细的边框，增强边界感
+                        .border(1.dp, Color(0xFF222222), RoundedCornerShape(10.dp))
+                ) {
+                    // 中间的图标
+                    Icon(
+                        imageVector = ImageVector.vectorResource(R.drawable.icon_layer_group_solid_full), // 这里可以用你的叠叠乐图标
+                        contentDescription = null,
+                        tint = Color(0xFF444444), // 图标颜色要暗淡一点，像嵌在里面
+                        modifier = Modifier.size(40.dp)
                     )
-                    .shadow(
-                        elevation = 10.dp,
-                        shape = RoundedCornerShape(10.dp),
-                        clip = false
-                    )
-            )
+                }
+            }
             Spacer(modifier = Modifier.size(10.dp))
             Column(
                 modifier = Modifier
@@ -346,7 +447,7 @@ private fun MusicController(
                     .wrapContentHeight()
             ) {
                 Text(
-                    text = currentSong.getDetailTitle(),
+                    text = if (isIdle) "TIDAL" else currentSong.getDetailTitle(),
                     color = Color.White,
                     fontWeight = FontWeight(600),
                     style = TextStyle(
@@ -360,7 +461,8 @@ private fun MusicController(
                 )
                 Spacer(modifier = Modifier.size(5.dp))
                 Text(
-                    text = currentSong.description ?: "No description",
+                    text = if (isIdle) "Select a track to play" else currentSong.description
+                        ?: "No description",
                     color = Color(0xffA0A0A0),
                     fontWeight = FontWeight(500),
                     style = TextStyle(
@@ -414,11 +516,14 @@ private fun MusicController(
             )
             Controller(
                 isPlaying = isPlaying,
-                isFavourite = isFavourite,
+                isFavourite = isFavourite.invoke(currentSong.id),
                 isBuffering = isBuffering,
                 onPlayOrPause = onPlayOrPause,
                 onForward = onForward,
-                onBackward = onBackward
+                onBackward = onBackward,
+                onFavourite = {
+                    onFavourite.invoke(currentSong.id, isFavourite.invoke(currentSong.id))
+                }
             )
             Spacer(
                 modifier = Modifier
@@ -456,7 +561,7 @@ private fun Controller(
     onForward: () -> Unit = {},
     onPlayOrPause: () -> Unit = {},
     onBackward: () -> Unit = {},
-    onFavourite: () -> Unit = {}
+    onFavourite: (Boolean) -> Unit = {}
 ) {
     Row(
         modifier = Modifier.background(
@@ -556,7 +661,7 @@ private fun Controller(
                     color = Color.Transparent,
                     shape = CircleShape
                 )
-                .clickable(onClick = onFavourite),
+                .clickable(onClick = { onFavourite.invoke(isFavourite) }),
             contentAlignment = Alignment.Center
         ) {
             Icon(

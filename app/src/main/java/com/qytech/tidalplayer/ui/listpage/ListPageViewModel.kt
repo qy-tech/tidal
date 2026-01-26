@@ -2,8 +2,6 @@ package com.qytech.tidalplayer.ui.listpage
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import androidx.paging.Pager
-import androidx.paging.PagingConfig
 import androidx.paging.PagingData
 import androidx.paging.cachedIn
 import com.qytech.tidal.cache.TidalCacheManager
@@ -18,8 +16,8 @@ import com.qytech.tidal.data.paging.Pagination
 import com.qytech.tidal.data.toDisplayDuration
 import com.qytech.tidal.login.TidalLogin
 import com.qytech.tidal.repository.TidalRepository
-import com.qytech.tidalplayer.ui.TidalPagingSource
 import com.qytech.tidalplayer.ui.listpage.model.DataType
+import com.qytech.tidalplayer.ui.listpage.model.PagerFlow
 import com.qytech.tidalplayer.ui.listpage.model.SingleSong
 import com.qytech.tidalplayer.ui.listpage.model.SongList
 import com.qytech.tidalplayer.utils.ToastUtils
@@ -47,202 +45,249 @@ class ListPageViewModel @Inject constructor(
     val currentArtistId = controllerManager.currentArtistId
     val currentListId = controllerManager.currentListId
     val currentSongId = controllerManager.currentSongId
+    val collectionTrackIds = tidalRepository.collectionTrackIds
     val userInfo = MutableStateFlow<UserInfo?>(null)
     val checkAuth = MutableStateFlow(true)
+    private val myMixTracksHashMap = hashMapOf<String,  Flow<PagingData<SingleSong>>>()
     private val _playlistRefresh = MutableStateFlow(0L)
+    private val _myPlaylistRefresh = MutableStateFlow(0L)
     private val _albumsRefresh = MutableStateFlow(0L)
     private val _tracksRefresh = MutableStateFlow(0L)
     private val _artistsRefresh = MutableStateFlow(0L)
+    private val _myMixesRefresh = MutableStateFlow(0L)
 
     @OptIn(ExperimentalCoroutinesApi::class)
     val collectionPlaylistPagingData = _playlistRefresh.flatMapLatest {
-        Pager(
-            config = PagingConfig(20),
-            pagingSourceFactory = {
-                TidalPagingSource(
-                    fetchData = { cursor ->
-                        val userId = tidalCacheManager.getUserInfo()?.id
-                        if (userId.isNullOrBlank()) {
-                            emptyList<Playlist>() to Pagination()
-                        } else {
-                            val response = tidalRepository.getCollectionPlaylists(userId, cursor)
-                            response.playlists to response.pagination
-                        }
-                    },
-                    toUiModel = { res ->
-                        SongList(
-                            id = res.id,
-                            title = res.name,
-                            description = res.description,
-                            coverUrl = getCoverUrl(res.coverArts),
-                            dataType = DataType.PLAY_LIST,
+        PagerFlow.build(
+            fetchData = { cursor ->
+                val userId = tidalCacheManager.getUserInfo()?.id
+                if (userId.isNullOrBlank()) {
+                    emptyList<Playlist>() to Pagination()
+                } else {
+                    val response = tidalRepository.getCollectionPlaylists(userId, cursor)
+                    response.playlists to response.pagination
+                }
+            },
+            toUiModel = { res ->
+                SongList(
+                    id = res.id,
+                    title = res.name,
+                    description = res.description,
+                    coverUrl = getCoverUrl(res.coverArts),
+                    dataType = DataType.PLAY_LIST,
 //                        duration =
-                        )
-                    }
                 )
             }
-        ).flow
+        )
+    }.flowOn(Dispatchers.IO).cachedIn(viewModelScope)
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    val myPlaylistPagingData = _myPlaylistRefresh.flatMapLatest {
+        PagerFlow.build(
+            fetchData = { cursor ->
+                val userId = tidalCacheManager.getUserInfo()?.id
+                if (userId.isNullOrBlank()) {
+                    emptyList<Playlist>() to Pagination()
+                } else {
+                    val response = tidalRepository.getUserPlaylists(userId, cursor)
+                    response.playlists to response.pagination
+                }
+            },
+            toUiModel = { res ->
+                SongList(
+                    id = res.id,
+                    title = res.name,
+                    description = res.description,
+                    coverUrl = getCoverUrl(res.coverArts),
+                    dataType = DataType.PLAY_LIST,
+//                        duration =
+                )
+            }
+        )
     }.flowOn(Dispatchers.IO).cachedIn(viewModelScope)
 
     @OptIn(ExperimentalCoroutinesApi::class)
     val collectionAlbumPagingData = _albumsRefresh.flatMapLatest {
-        Pager(
-            config = PagingConfig(20),
-            pagingSourceFactory = {
-                TidalPagingSource(
-                    fetchData = { cursor ->
-                        val userId = tidalCacheManager.getUserInfo()?.id
-                        if (userId.isNullOrBlank()) {
-                            emptyList<Album>() to Pagination()
-                        } else {
-                            val response = tidalRepository.getCollectionAlbums(userId, cursor)
-                            response.albums to response.pagination
-                        }
-                    },
-                    toUiModel = { res ->
-                        SongList(
-                            id = res.id,
-                            title = res.title,
-                            description = getArtistStr(res.artists),
-                            coverUrl = getCoverUrl(res.coverArts),
-                            dataType = DataType.ALBUM
-                        )
-                    }
+        PagerFlow.build(
+            fetchData = { cursor ->
+                val userId = tidalCacheManager.getUserInfo()?.id
+                if (userId.isNullOrBlank()) {
+                    emptyList<Album>() to Pagination()
+                } else {
+                    val response = tidalRepository.getCollectionAlbums(userId, cursor)
+                    response.albums to response.pagination
+                }
+            },
+            toUiModel = { res ->
+                SongList(
+                    id = res.id,
+                    title = res.title,
+                    description = getArtistStr(res.artists),
+                    coverUrl = getCoverUrl(res.coverArts),
+                    dataType = DataType.ALBUM
                 )
             }
-        ).flow
+        )
     }.flowOn(Dispatchers.IO).cachedIn(viewModelScope)
 
     @OptIn(ExperimentalCoroutinesApi::class)
     val collectionTracksPagingData = _tracksRefresh.flatMapLatest {
-        Pager(
-            config = PagingConfig(20),
-            pagingSourceFactory = {
-                TidalPagingSource(
-                    fetchData = { cursor ->
-                        val userId = tidalCacheManager.getUserInfo()?.id
-                        if (userId.isNullOrBlank()) {
-                            emptyList<TrackDetail>() to Pagination()
-                        } else {
-                            val response = tidalRepository.getCollectionTracks(userId, cursor)
-                            response.tracks to response.pagination
-                        }
-                    },
-                    toUiModel = { res ->
-                        SingleSong(
-                            id = res.trackInfo.id,
-                            title = res.trackInfo.title,
-                            duration = res.trackInfo.duration.toDisplayDuration(),
-                            coverUrl = getCoverUrl(res.album.coverArts),
-                            description = getArtistStr(res.artists),
-                            artists = res.artists,
-                            album = res.album,
-                            version = res.trackInfo.version,
-                            dataType = DataType.TRACK
-                        )
-                    }
+        PagerFlow.build(
+            fetchData = { cursor ->
+                val userId = tidalCacheManager.getUserInfo()?.id
+                if (userId.isNullOrBlank()) {
+                    emptyList<TrackDetail>() to Pagination()
+                } else {
+                    val response = tidalRepository.getCollectionTracks(userId, cursor)
+                    response.tracks to response.pagination
+                }
+            },
+            toUiModel = { res ->
+                SingleSong(
+                    id = res.trackInfo.id,
+                    title = res.trackInfo.title,
+                    duration = res.trackInfo.duration.toDisplayDuration(),
+                    coverUrl = getCoverUrl(res.album.coverArts),
+                    description = getArtistStr(res.artists),
+                    artists = res.artists,
+                    album = res.album,
+                    version = res.trackInfo.version,
+                    dataType = DataType.TRACK
                 )
             }
-        ).flow
+        )
     }.flowOn(Dispatchers.IO).cachedIn(viewModelScope)
 
     @OptIn(ExperimentalCoroutinesApi::class)
     val collectionArtistsPagingData = _artistsRefresh.flatMapLatest {
-        Pager(
-            config = PagingConfig(20),
-            pagingSourceFactory = {
-                TidalPagingSource(
-                    fetchData = { cursor ->
-                        val userId = tidalCacheManager.getUserInfo()?.id
-                        if (userId.isNullOrBlank()) {
-                            emptyList<ArtistDetail>() to Pagination()
-                        } else {
-                            val response = tidalRepository.getCollectionArtists(userId, cursor)
-                            response.artists to response.pagination
-                        }
-                    },
-                    toUiModel = { res ->
-                        SongList(
-                            id = res.artistInfo.id,
-                            title = res.artistInfo.name,
-                            description = null,
-                            coverUrl = getCoverUrl(res.profileArts),
-                            dataType = DataType.ARTIST
-                        )
-                    }
+        PagerFlow.build(
+            fetchData = { cursor ->
+                val userId = tidalCacheManager.getUserInfo()?.id
+                if (userId.isNullOrBlank()) {
+                    emptyList<ArtistDetail>() to Pagination()
+                } else {
+                    val response = tidalRepository.getCollectionArtists(userId, cursor)
+                    response.artists to response.pagination
+                }
+            },
+            toUiModel = { res ->
+                SongList(
+                    id = res.artistInfo.id,
+                    title = res.artistInfo.name,
+                    description = null,
+                    coverUrl = getCoverUrl(res.profileArts),
+                    dataType = DataType.ARTIST
                 )
             }
-        ).flow
+        )
     }.flowOn(Dispatchers.IO).cachedIn(viewModelScope)
 
-    fun getPlaylistItemPagingData(listId: String, dataType: Int): Flow<PagingData<SingleSong>> {
-        Timber.d("getPlaylistItemPagingData listId: $listId, dataType: $dataType")
-        return Pager(
-            config = PagingConfig(20),
-            pagingSourceFactory = {
-                TidalPagingSource(
-                    fetchData = { cursor ->
-                        if (dataType != DataType.PLAY_LIST.ordinal) {
-                            emptyList<TrackDetail>() to Pagination()
-                        } else {
-                            val response =
-                                tidalRepository.getPlaylistTracks(listId, cursor)
-                            response.tracks to response.pagination
-                        }
-                    },
-                    toUiModel = { res ->
-                        SingleSong(
-                            id = res.trackInfo.id,
-                            title = res.trackInfo.title,
-                            duration = res.trackInfo.duration.toDisplayDuration(),
-                            coverUrl = getCoverUrl(res.album.coverArts),
-                            description = getArtistStr(res.artists),
-                            artists = res.artists,
-                            album = res.album,
-                            version = res.trackInfo.version,
-                            dataType = DataType.TRACK
-                        )
-                    }
+    @OptIn(ExperimentalCoroutinesApi::class)
+    val myMixesPagingData = _myMixesRefresh.flatMapLatest {
+        PagerFlow.build(
+            fetchData = { cursor ->
+                val userId = tidalCacheManager.getUserInfo()?.id
+                if (userId.isNullOrBlank()) {
+                    emptyList<Playlist>() to Pagination()
+                } else {
+                    val response = tidalRepository.getMyMixes(userId)
+                    response to Pagination()
+                }
+            },
+            toUiModel = { res ->
+                SongList(
+                    id = res.id,
+                    title = res.name,
+                    description = null,
+                    coverUrl = getCoverUrl(res.coverArts),
+                    dataType = DataType.MY_MIX
                 )
             }
-        ).flow
+        )
+    }.flowOn(Dispatchers.IO).cachedIn(viewModelScope)
+
+    fun getMyMixTracksPagingData(listId: String): Flow<PagingData<SingleSong>> {
+        if (myMixTracksHashMap.contains(listId)) return myMixTracksHashMap[listId]!!
+        else {
+            val pagingData = getPlaylistItemPagingData(listId)
+            myMixTracksHashMap[listId] = pagingData
+            return pagingData
+        }
+    }
+
+    fun getPlaylistItemPagingData(listId: String): Flow<PagingData<SingleSong>> {
+        Timber.d("getPlaylistItemPagingData listId: $listId")
+        return PagerFlow.build(
+            fetchData = { cursor ->
+                val response =
+                    tidalRepository.getPlaylistTracks(listId, cursor)
+                response.tracks to response.pagination
+            },
+            toUiModel = { res ->
+                SingleSong(
+                    id = res.trackInfo.id,
+                    title = res.trackInfo.title,
+                    duration = res.trackInfo.duration.toDisplayDuration(),
+                    coverUrl = getCoverUrl(res.album.coverArts),
+                    description = getArtistStr(res.artists),
+                    artists = res.artists,
+                    album = res.album,
+                    version = res.trackInfo.version,
+                    dataType = DataType.TRACK
+                )
+            }
+        )
             .flowOn(Dispatchers.IO)
             .cachedIn(viewModelScope)
     }
 
-    fun getAlbumItemPagingData(listId: String, dataType: Int): Flow<PagingData<SingleSong>> {
-        Timber.d("getAlbumItemPagingData listId: $listId, dataType: $dataType")
-        return Pager(
-            config = PagingConfig(20),
-            pagingSourceFactory = {
-                TidalPagingSource(
-                    fetchData = { cursor ->
-                        if (dataType != DataType.ALBUM.ordinal) {
-                            emptyList<TrackDetail>() to Pagination()
-                        } else {
-                            val response =
-                                tidalRepository.getAlbumsTracks(listId, cursor)
-                            response.tracks to response.pagination
-                        }
-                    },
-                    toUiModel = { res ->
-                        SingleSong(
-                            id = res.trackInfo.id,
-                            title = res.trackInfo.title,
-                            duration = res.trackInfo.duration.toDisplayDuration(),
-                            coverUrl = getCoverUrl(res.album.coverArts),
-                            description = getArtistStr(res.artists),
-                            artists = res.artists,
-                            album = res.album,
-                            version = res.trackInfo.version,
-                            dataType = DataType.TRACK
-                        )
-                    }
+    fun getAlbumItemPagingData(listId: String): Flow<PagingData<SingleSong>> {
+        Timber.d("getAlbumItemPagingData listId: $listId")
+        return PagerFlow.build(
+            fetchData = { cursor ->
+                val response =
+                    tidalRepository.getAlbumsTracks(listId, cursor)
+                response.tracks to response.pagination
+            },
+            toUiModel = { res ->
+                SingleSong(
+                    id = res.trackInfo.id,
+                    title = res.trackInfo.title,
+                    duration = res.trackInfo.duration.toDisplayDuration(),
+                    coverUrl = getCoverUrl(res.album.coverArts),
+                    description = getArtistStr(res.artists),
+                    artists = res.artists,
+                    album = res.album,
+                    version = res.trackInfo.version,
+                    dataType = DataType.TRACK
                 )
             }
-        ).flow
+        )
             .flowOn(Dispatchers.IO)
             .cachedIn(viewModelScope)
+    }
+
+    fun getArtistAlbumsPagingData(artistId: String): Flow<PagingData<SongList>> {
+        Timber.d("getArtistAlbumsPagingData artistId: $artistId")
+        return PagerFlow.build(
+            fetchData = { cursor ->
+                if (artistId.isEmpty()) {
+                    emptyList<Album>() to Pagination()
+                } else {
+                    val response = tidalRepository.getArtistAlbums(artistId, cursor)
+                    response.albums to response.pagination
+                }
+            },
+            toUiModel = { res ->
+                SongList(
+                    id = res.id,
+                    title = res.title,
+                    description = getArtistStr(res.artists),
+                    coverUrl = getCoverUrl(res.coverArts),
+                    dataType = DataType.ALBUM
+                )
+            }
+        )
     }
 
     fun checkAuth() {
@@ -284,6 +329,10 @@ class ListPageViewModel @Inject constructor(
         return if (coverArts.isNotEmpty()) coverArts[0].url else null
     }
 
+    fun clearIds() {
+        controllerManager.clearIds()
+    }
+
     fun setCurrentListId(listId: String) {
         controllerManager.setCurrentListId(listId)
     }
@@ -320,16 +369,12 @@ class ListPageViewModel @Inject constructor(
         controllerManager.setDragProgress(dragProgress)
     }
 
-    fun logout() {
+    suspend fun logout() {
         tidalLogin.logout()
     }
 
-    fun checkFavouriteTrack(trackId: String): Boolean {
-        return tidalRepository.checkTrackIsCollected(trackId)
-    }
-
     fun refreshAllCollection(type: DataType? = null) {
-        when(type) {
+        when (type) {
             DataType.PLAY_LIST -> _playlistRefresh.update { it + 1 }
             DataType.ALBUM -> _albumsRefresh.update { it + 1 }
             DataType.TRACK -> _tracksRefresh.update { it + 1 }
@@ -339,6 +384,38 @@ class ListPageViewModel @Inject constructor(
                 _albumsRefresh.update { it + 1 }
                 _tracksRefresh.update { it + 1 }
                 _artistsRefresh.update { it + 1 }
+            }
+        }
+    }
+
+    fun addTrackToCollection(trackId: String) {
+        val userId = tidalCacheManager.getUserInfo()?.id
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                if (!userId.isNullOrBlank()) {
+                    tidalRepository.addTracksToCollection(userId, listOf(trackId))
+                    _tracksRefresh.update { it + 1 }
+                } else {
+                    ToastUtils.show("添加收藏失败，用户Id为空")
+                }
+            } catch (e: Exception) {
+                ToastUtils.show("添加收藏失败")
+            }
+        }
+    }
+
+    fun removeTrackToCollection(trackId: String) {
+        val userId = tidalCacheManager.getUserInfo()?.id
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                if (!userId.isNullOrBlank()) {
+                    tidalRepository.removeTracksFromCollection(userId, listOf(trackId))
+                    _tracksRefresh.update { it + 1 }
+                } else {
+                    ToastUtils.show("取消收藏失败，用户Id为空")
+                }
+            } catch (e: Exception) {
+                ToastUtils.show("取消收藏失败")
             }
         }
     }

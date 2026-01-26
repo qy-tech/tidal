@@ -1,0 +1,39 @@
+package com.qytech.tidalplayer.ui.listpage.model
+
+import androidx.paging.Pager
+import androidx.paging.PagingConfig
+import androidx.paging.PagingData
+import com.qytech.tidal.data.paging.Pagination
+import com.qytech.tidalplayer.ui.TidalPagingSource
+import kotlinx.coroutines.flow.Flow
+
+object PagerFlow {
+
+    fun <RESPONSE, UI_MODEL : Any> build(
+        config: PagingConfig = PagingConfig(20),
+        fetchData: suspend (cursor: String?) -> Pair<List<RESPONSE>, Pagination>,
+        toUiModel: (RESPONSE) -> UI_MODEL
+    ): Flow<PagingData<UI_MODEL>> {
+        return Pager(
+            config = config,
+            pagingSourceFactory = {
+                TidalPagingSource(
+                    fetchData = fetchData,
+                    toUiModel = toUiModel
+                )
+            }
+        ).flow
+//            .retryWhen { e, attempt ->
+//            if (e is HttpException && e.code() == 429) {
+//                val seconds = e.response()
+//                    ?.headers()
+//                    ?.get("Retry-After")
+//                    ?.toLongOrNull() ?: 2
+//                delay(seconds * 1000)
+//                true
+//            } else {
+//                false
+//            }
+//        }
+    }
+}

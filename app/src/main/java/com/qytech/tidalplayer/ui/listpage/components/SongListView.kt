@@ -39,6 +39,7 @@ import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.text.PlatformTextStyle
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.LineHeightStyle
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -63,6 +64,8 @@ fun SongListView(
     onItemClick: (Int, SingleSong) -> Unit = {_, _ -> },
     onPlaySequentially: () -> Unit = {},
     onBack: () -> Unit = {},
+    onFavourite: (String, Boolean) -> Unit = {_, _ ->},
+    onOtherOption: () -> Unit = {}
 ) {
     Row(
         modifier = Modifier
@@ -130,15 +133,21 @@ fun SongListView(
                 modifier = Modifier
                     .verticalScroll(rememberScrollState())
             ) {
-                AsyncImage(
-                    model = coverUrl,
-                    contentDescription = null,
-                    modifier = Modifier
-                        .size(250.dp)
-                        .clip(RoundedCornerShape(16.dp)),
-                    contentScale = ContentScale.Crop
+                if (coverUrl.isNullOrBlank()) {
+                    TidalTracksCover(
+                        size = 250.dp
+                    )
+                } else {
+                    AsyncImage(
+                        model = coverUrl,
+                        contentDescription = null,
+                        modifier = Modifier
+                            .size(250.dp)
+                            .clip(RoundedCornerShape(16.dp)),
+                        contentScale = ContentScale.Crop
 
-                )
+                    )
+                }
                 Spacer(modifier = Modifier.size(15.dp))
                 Text(
                     text = title,
@@ -166,22 +175,24 @@ fun SongListView(
                         )
                     ),
                     fontSize = 20.sp,
+                    modifier = Modifier
+                        .width(250.dp),
                 )
                 // 播放全部
                 Spacer(modifier = Modifier.size(15.dp))
                 Box(
                     modifier = Modifier
-                        .fillMaxWidth()
+                        .width(250.dp)
                         .wrapContentHeight(),
                     contentAlignment = Alignment.Center
                 ) {
                     Row(
                         modifier = Modifier
-                            .width(150.dp)
-                            .height(50.dp)
+                            .width(120.dp)
+                            .height(40.dp)
                             .background(
                                 color = Color.White,
-                                shape = RoundedCornerShape(80.dp)
+                                shape = RoundedCornerShape(40.dp)
                             )
                             .clickable(onClick = onPlaySequentially),
                         verticalAlignment = Alignment.CenterVertically,
@@ -190,18 +201,24 @@ fun SongListView(
                         Icon(
                             imageVector = ImageVector.vectorResource(R.drawable.icon_play_solid_full),
                             contentDescription = null,
-                            modifier = Modifier.size(25.dp)
+                            modifier = Modifier.size(20.dp)
                         )
                         Spacer(modifier = Modifier.size(5.dp))
                         Text(
                             text = "顺序播放",
-                            fontSize = 18.sp,
+                            fontSize = 15.sp,
+                            lineHeight = 15.sp,
                             fontWeight = FontWeight(800),
                             style = TextStyle(
                                 platformStyle = PlatformTextStyle(
                                     includeFontPadding = false
+                                ),
+                                lineHeightStyle = LineHeightStyle(
+                                    alignment = LineHeightStyle.Alignment.Center,
+                                    trim = LineHeightStyle.Trim.Both
                                 )
                             ),
+                            textAlign = TextAlign.Center
                         )
                     }
                 }
@@ -214,7 +231,9 @@ fun SongListView(
             dataList = daraList,
             currentSongId = currentSongId,
             isFavourite = isFavourite,
-            onItemClick = onItemClick
+            onItemClick = onItemClick,
+            onFavourite = onFavourite,
+            onOtherOption = onOtherOption
         )
     }
 }
@@ -225,7 +244,9 @@ fun RightSongList(
     dataList: LazyPagingItems<SingleSong>,
     currentSongId: String = "",
     isFavourite: (String) -> Boolean,
-    onItemClick: (Int, SingleSong) -> Unit
+    onItemClick: (Int, SingleSong) -> Unit,
+    onFavourite: (String, Boolean) -> Unit = {_, _ ->},
+    onOtherOption: () -> Unit = {}
 ) {
     Column(
         modifier = modifier
@@ -352,7 +373,9 @@ fun RightSongList(
                             item = item,
                             isCurrentItem = currentSongId == item.id,
                             isFavourite = isFavourite(item.id),
-                            onClick = onItemClick
+                            onClick = onItemClick,
+                            onFavourite = onFavourite,
+                            onOtherOption = onOtherOption
                         )
                     }
                 }
@@ -397,7 +420,7 @@ fun SongItem(
     isCurrentItem: Boolean = false,
     isFavourite: Boolean = false,
     onClick: (Int, SingleSong) -> Unit = { _, _ -> },
-    onFavourite: () -> Unit = {},
+    onFavourite: (String, Boolean) -> Unit = {_, _ ->},
     onOtherOption: () -> Unit = {}
 ) {
     val textColor = Color(0xffA0A0A0)
@@ -516,7 +539,7 @@ fun SongItem(
         Box(
             modifier = Modifier.width(35.dp)
                 .clickable(
-                    onClick = onFavourite
+                    onClick = { onFavourite.invoke(item.id, isFavourite) }
                 ),
             contentAlignment = Alignment.Center
         ) {

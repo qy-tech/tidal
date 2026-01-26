@@ -31,6 +31,8 @@ import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import com.qytech.tidalplayer.R
 import com.qytech.tidalplayer.ui.listpage.components.ForYouContent
+import com.qytech.tidalplayer.ui.listpage.components.MyMixContent
+import com.qytech.tidalplayer.ui.listpage.components.MyPlaylistContent
 import com.qytech.tidalplayer.ui.listpage.components.TabRowPill
 import com.qytech.tidalplayer.ui.listpage.model.DataType
 import com.qytech.tidalplayer.ui.listpage.model.ItemType
@@ -46,7 +48,7 @@ fun SongListScreen(
     val pageList = remember {
         listOf(
             PageItem(
-                "For You", Color(0xFF6200EE),
+                "For You",
                 arrayListOf(
                     SubItem("Playlists", ItemType.SONG_LIST, DataType.PLAY_LIST),
                     SubItem("Albums", ItemType.SONG_LIST, DataType.ALBUM),
@@ -54,7 +56,16 @@ fun SongListScreen(
                     SubItem("Artists", ItemType.ARTIST, DataType.ARTIST)
                 )
             ),
-            PageItem("Playlist", Color(0xFF03DAC5), emptyList())
+            PageItem("Playlist", emptyList()),
+            PageItem(
+                title = "Mix", emptyList()
+            ),
+            PageItem(
+                title = "Discovery", emptyList()
+            ),
+            PageItem(
+                title = "New Arrivals", emptyList()
+            )
         )
     }
     val scope = rememberCoroutineScope()
@@ -103,6 +114,16 @@ fun SongListScreen(
                 0 -> {
                     ForYouContent(
                         item = item,
+                        navController = navController
+                    )
+                }
+                1 -> {
+                    MyPlaylistContent(
+                        navController = navController
+                    )
+                }
+                2 -> {
+                    MyMixContent(
                         navController = navController
                     )
                 }

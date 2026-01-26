@@ -54,7 +54,6 @@ import androidx.paging.compose.LazyPagingItems
 import androidx.paging.compose.collectAsLazyPagingItems
 import androidx.paging.compose.itemKey
 import coil3.compose.AsyncImage
-import com.qytech.tidal.data.toDisplayDuration
 import com.qytech.tidalplayer.R
 import com.qytech.tidalplayer.ui.TidalRoute
 import com.qytech.tidalplayer.ui.listpage.ListPageViewModel
@@ -66,7 +65,6 @@ import com.qytech.tidalplayer.ui.listpage.model.SingleSong
 import com.qytech.tidalplayer.ui.listpage.model.SongList
 import com.tidal.sdk.player.playbackengine.model.PlaybackState
 import kotlinx.coroutines.flow.emptyFlow
-import timber.log.Timber
 
 @Composable
 fun ForYouContent(
@@ -83,6 +81,7 @@ fun ForYouContent(
             controllerUiState.playbackState == PlaybackState.PLAYING || controllerUiState.playbackState == PlaybackState.STALLED
         }
     }
+    val favouriteTracks by viewModel.collectionTrackIds.collectAsState()
 
     val artistData = viewModel.collectionArtistsPagingData.collectAsLazyPagingItems()
     val playlistData = viewModel.collectionPlaylistPagingData.collectAsLazyPagingItems()
@@ -90,11 +89,27 @@ fun ForYouContent(
     val trackData = viewModel.collectionTracksPagingData.collectAsLazyPagingItems()
     val emptySongList = emptyFlow<PagingData<SongList>>().collectAsLazyPagingItems()
 
+    LaunchedEffect(controllerUiState.playbackState) {
+        if (controllerUiState.playbackState == PlaybackState.IDLE) {
+            // 清空id
+            viewModel.clearIds()
+        }
+    }
+
+
+    HandlePagingError(artistData)
+    HandlePagingError(playlistData)
+    HandlePagingError(albumData)
+    HandlePagingError(trackData)
+
     LaunchedEffect(trackData.itemCount, playingListId) {
         if (trackData.loadState.refresh is LoadState.NotLoading) {
             viewModel.setCurrentSongList(playingListId, trackData.itemSnapshotList.items)
             if (!trackData.loadState.append.endOfPaginationReached) {
-                if (trackData.itemCount > 0) trackData[trackData.itemCount - 1] // 让他默认全部加载完
+                if (trackData.itemCount > 0) {
+                    // 让他默认全部加载完
+                    trackData[trackData.itemCount - 1]
+                }
             }
         }
     }
@@ -132,20 +147,47 @@ fun ForYouContent(
                             },
                             onRefresh = {
                                 viewModel.refreshAllCollection(subItem.dataType)
+                            },
+                            onSeeAll = {
+                                when (val type = subItem.dataType) {
+                                    DataType.PLAY_LIST -> {
+                                        navController.navigate(
+                                            route = TidalRoute.getPlaylistAlbumListRoute(
+                                                title = "Collection Playlists",
+                                                dataType = type
+                                            )
+                                        )
+                                    }
+
+                                    DataType.ALBUM -> {
+                                        navController.navigate(
+                                            route = TidalRoute.getPlaylistAlbumListRoute(
+                                                title = "Collection Albums",
+                                                dataType = type
+                                            )
+                                        )
+                                    }
+
+                                    else -> {}
+                                }
                             }
                         )
                     }
 
                     ItemType.TRACK -> {
-                        val listId = "for you tracks"
+                        val listId = TidalRoute.TRACK_LIST_ID
                         ForYouTracks(
                             playingTrackId = playingSongId,
                             isPlaying = isPlaying,
-                            isFavourite = viewModel::checkFavouriteTrack,
+                            isFavourite = { id -> favouriteTracks.contains(id) },
                             dataList = trackData,
                             onClick = { index, item ->
-                                if (playingSongId == item.id && isPlaying) {
-                                    viewModel.pauseSong()
+                                if (playingSongId == item.id) {
+                                    if (isPlaying) {
+                                        viewModel.pauseSong()
+                                    } else {
+                                        viewModel.playSong()
+                                    }
                                     return@ForYouTracks
                                 }
                                 viewModel.setCurrentListId(listId)
@@ -159,7 +201,24 @@ fun ForYouContent(
                                 viewModel.loadAndPlaySong(index, item)
                                 viewModel.setControllerShow(true)
                             },
-                            onRefresh = { viewModel.refreshAllCollection(subItem.dataType) }
+                            onRefresh = { viewModel.refreshAllCollection(subItem.dataType) },
+                            onFavourite = { id, isFavourite ->
+                                if (isFavourite) {
+                                    viewModel.removeTrackToCollection(id)
+                                } else {
+                                    viewModel.addTrackToCollection(id)
+                                }
+                            },
+                            onSeeAll = {
+                                val route = TidalRoute.getItemTrackListRoute(
+                                    listId = listId,
+                                    dataType = DataType.TRACK,
+                                    coverUrl = "",
+                                    title = "Collection Tracks",
+                                    description = ""
+                                )
+                                navController.navigate(route)
+                            }
                         )
                     }
 
@@ -168,10 +227,23 @@ fun ForYouContent(
                             playingArtistId = playingArtistId,
                             isPlaying = isPlaying,
                             dataList = artistData,
-                            onClick = {
-
+                            onClick = { songList ->
+                                // 跳转到单曲界面
+                                val route = TidalRoute.getPlaylistAlbumListRoute(
+                                    title = songList.title,
+                                    artistId = songList.id,
+                                    dataType = DataType.ALBUM
+                                )
+                                navController.navigate(route)
                             },
-                            onRefresh = { viewModel.refreshAllCollection(subItem.dataType) }
+                            onRefresh = { viewModel.refreshAllCollection(subItem.dataType) },
+                            onSeeAll = {
+                                navController.navigate(
+                                    route = TidalRoute.getArtistListRoute(
+                                        title = "Collection Artists"
+                                    )
+                                )
+                            }
                         )
                     }
                 }
@@ -187,7 +259,8 @@ private fun ForYouArtists(
     isPlaying: Boolean = false,
     dataList: LazyPagingItems<SongList>,
     onClick: (SongList) -> Unit,
-    onRefresh: () -> Unit
+    onRefresh: () -> Unit,
+    onSeeAll: () -> Unit
 ) {
     Column(
         modifier = Modifier.background(
@@ -220,7 +293,11 @@ private fun ForYouArtists(
                         includeFontPadding = false
                     )
                 ),
-                fontSize = 14.sp
+                fontSize = 14.sp,
+                modifier = Modifier
+                    .clickable(
+                        onClick = onSeeAll
+                    )
             )
         }
         Spacer(modifier = Modifier.size(5.dp))
@@ -316,10 +393,12 @@ private fun ForYouTracks(
     title: String = "Tracks",
     playingTrackId: String = "",
     isPlaying: Boolean = false,
-    isFavourite: (String) -> Boolean = {false},
+    isFavourite: (String) -> Boolean = { false },
     dataList: LazyPagingItems<SingleSong>,
     onClick: (Int, SingleSong) -> Unit,
-    onRefresh: () -> Unit = {}
+    onRefresh: () -> Unit = {},
+    onFavourite: (String, Boolean) -> Unit,
+    onSeeAll: () -> Unit = {}
 ) {
     Column(
         modifier = Modifier.background(
@@ -352,7 +431,10 @@ private fun ForYouTracks(
                         includeFontPadding = false
                     )
                 ),
-                fontSize = 14.sp
+                fontSize = 14.sp,
+                modifier = Modifier.clickable(
+                    onClick = onSeeAll
+                )
             )
         }
         Spacer(modifier = Modifier.size(5.dp))
@@ -360,7 +442,8 @@ private fun ForYouTracks(
         if (dataList.itemCount == 0) return
         LazyHorizontalGrid(
             rows = GridCells.Fixed(2),
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier
+                .fillMaxWidth()
                 .height(170.dp),
             horizontalArrangement = Arrangement.spacedBy(10.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp)
@@ -377,9 +460,7 @@ private fun ForYouTracks(
                         isPlaying = isPlaying,
                         isFavourite = isFavourite.invoke(item.id),
                         onClick = { onClick.invoke(index, item) },
-                        onFavourite = {
-
-                        },
+                        onFavourite = onFavourite,
                         onOtherOption = {
 
                         }
@@ -397,7 +478,7 @@ private fun TracksItem(
     isPlaying: Boolean = false,
     isFavourite: Boolean = false,
     onClick: (SingleSong) -> Unit = {},
-    onFavourite: (SingleSong) -> Unit = {},
+    onFavourite: (String, Boolean) -> Unit = { _, _ -> },
     onOtherOption: (SingleSong) -> Unit = {}
 ) {
     Box(
@@ -500,13 +581,13 @@ private fun TracksItem(
 
 
             IconButton(
-                onClick = { onFavourite.invoke(item) }
+                onClick = { onFavourite.invoke(item.id, isFavourite) }
             ) {
                 Icon(
-                    imageVector = ImageVector.vectorResource(R.drawable.icon_heart_solid_full),
+                    imageVector = ImageVector.vectorResource(if (isFavourite) R.drawable.icon_heart_solid_full else R.drawable.icon_heart_regular_full),
                     contentDescription = null,
-                    modifier = Modifier.size(25.dp),
-                    tint = if (isFavourite) Color(0xff00E5FF) else Color.White
+                    tint = if (isFavourite) Color(0xff00E5FF) else Color(0xffA0A0A0),
+                    modifier = Modifier.size(25.dp)
                 )
             }
 
@@ -542,7 +623,8 @@ private fun <T : ItemInfo> ForYouSongList(
     isPlaying: Boolean = false,
     dataList: LazyPagingItems<T>,
     onClick: (ItemInfo) -> Unit = {},
-    onRefresh: () -> Unit = {}
+    onRefresh: () -> Unit = {},
+    onSeeAll: () -> Unit = {}
 ) {
     Column(
         modifier = Modifier.background(
@@ -575,11 +657,13 @@ private fun <T : ItemInfo> ForYouSongList(
                         includeFontPadding = false
                     )
                 ),
-                fontSize = 14.sp
+                fontSize = 14.sp,
+                modifier = Modifier.clickable(
+                    onClick = onSeeAll
+                )
             )
         }
         Spacer(modifier = Modifier.size(5.dp))
-        // 列表
         LazyRow(
             horizontalArrangement = Arrangement.spacedBy(10.dp)
         ) {

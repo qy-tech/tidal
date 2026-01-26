@@ -17,7 +17,7 @@ data class SongList(
     override val title: String = "song list",
     override val description: String? = null,
     override val itemList: List<ItemInfo> = arrayListOf(SingleSong(), SingleSong()),
-    override val coverUrl: String? = null,
+    override val coverUrl: String? = "https://resources.tidal.com/images/a3dc8eb8/5f0c/47e8/b5d8/07ed4e78d5f1/160x160.jpg",
     override val dataType: DataType = DataType.PLAY_LIST,
 ) : ItemInfo
 

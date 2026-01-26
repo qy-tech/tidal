@@ -18,6 +18,8 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -43,8 +45,14 @@ fun LoginStartScreen(
     modifier: Modifier = Modifier
 ) {
 
-    val isLoggedIn by viewModel.isLoggedIn.collectAsStateWithLifecycle()
+    val isLoggedIn by viewModel.isLoggedIn.collectAsState()
     val activity = LocalActivity.current
+
+    LaunchedEffect(isLoggedIn) {
+        if (isLoggedIn) {
+            navController.navigate(TidalRoute.SONG_LIST_START)
+        }
+    }
 
     ConstraintLayout(
         modifier = modifier
@@ -64,10 +72,7 @@ fun LoginStartScreen(
                 },
             contentAlignment = Alignment.Center
         ) {
-            if (isLoggedIn) {
-//             todo 自动登录，或者直接跳转到歌曲列表
-                navController.navigate(TidalRoute.SONG_LIST_START)
-            } else {
+            if (!isLoggedIn) {
                 NotLoggedInUI(
                     onClickLogin = {
                         navController.navigate(TidalRoute.LOGIN_WEB)

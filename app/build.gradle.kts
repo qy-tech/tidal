@@ -124,6 +124,7 @@ dependencies {
     implementation(libs.androidx.constraintlayout.compose)
     implementation(libs.coil.compose)
     implementation(libs.coil.network.okhttp)
+    implementation(libs.retrofit)
     implementation(project(":tidal"))
     implementation(libs.androidx.paging.compose)
     implementation(libs.auth)

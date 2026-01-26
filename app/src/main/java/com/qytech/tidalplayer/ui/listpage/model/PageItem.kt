@@ -4,7 +4,6 @@ import androidx.compose.ui.graphics.Color
 
 data class PageItem(
     val title: String,
-    val color: Color,
     val subItems: List<SubItem>,
 )
 
@@ -20,5 +19,10 @@ enum class ItemType{
 }
 
 enum class DataType{
-    PLAY_LIST, ALBUM, TRACK, ARTIST
+    PLAY_LIST, // 别人的歌单 + 自己的歌单
+    MY_PLAY_LIST, // 自己的歌单
+    ALBUM,
+    TRACK,
+    ARTIST,
+    MY_MIX
 }
