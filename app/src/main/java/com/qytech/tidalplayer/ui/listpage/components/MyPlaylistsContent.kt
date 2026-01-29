@@ -91,6 +91,9 @@ fun MyPlaylistContent(
                 navController.navigate(route)
             }
         )
+        if (pagingItem.loadState.refresh is LoadState.Loading) {
+            CircularProgressIndicator()
+        }
     }
 }
 

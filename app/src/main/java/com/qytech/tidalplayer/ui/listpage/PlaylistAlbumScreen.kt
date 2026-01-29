@@ -45,17 +45,14 @@ import androidx.navigation.NavController
 import androidx.paging.LoadState
 import androidx.paging.compose.LazyPagingItems
 import androidx.paging.compose.collectAsLazyPagingItems
-import androidx.paging.compose.itemKey
 import coil3.compose.AsyncImage
 import com.qytech.tidalplayer.R
 import com.qytech.tidalplayer.ui.TidalRoute
 import com.qytech.tidalplayer.ui.listpage.model.DataType
 import com.qytech.tidalplayer.ui.listpage.model.SongList
-import com.qytech.tidalplayer.ui.theme.GlowColorGreen
 import com.qytech.tidalplayer.utils.popBackSafely
 import com.tidal.sdk.player.playbackengine.model.PlaybackState
 import kotlinx.coroutines.flow.emptyFlow
-import timber.log.Timber
 
 @Composable
 fun PlaylistAlbumScreen(
@@ -92,7 +89,7 @@ fun PlaylistAlbumScreen(
             ),
         contentAlignment = Alignment.Center
     ) {
-        ListContent(
+        PlaylistAlbumListContent(
             title = title,
             dataList = pagingItem,
             currentListId = currentListId,
@@ -116,7 +113,7 @@ fun PlaylistAlbumScreen(
 }
 
 @Composable
-private fun ListContent(
+private fun PlaylistAlbumListContent(
     title: String = "Playlist",
     glowColor: Color = Color.Transparent,
     dataList: LazyPagingItems<SongList>,

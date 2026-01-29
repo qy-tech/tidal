@@ -30,9 +30,12 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import com.qytech.tidalplayer.R
+import com.qytech.tidalplayer.ui.TidalRoute
+import com.qytech.tidalplayer.ui.listpage.components.DiscoveryMixContent
 import com.qytech.tidalplayer.ui.listpage.components.ForYouContent
 import com.qytech.tidalplayer.ui.listpage.components.MyMixContent
 import com.qytech.tidalplayer.ui.listpage.components.MyPlaylistContent
+import com.qytech.tidalplayer.ui.listpage.components.NewArrivalContent
 import com.qytech.tidalplayer.ui.listpage.components.TabRowPill
 import com.qytech.tidalplayer.ui.listpage.model.DataType
 import com.qytech.tidalplayer.ui.listpage.model.ItemType
@@ -93,7 +96,13 @@ fun SongListScreen(
                     pagerState.scrollToPage(pageList.indexOf(item))
                 }
             },
-            labelProvider = { it.title }
+            labelProvider = { it.title },
+            onSearch = {
+                navController.navigate(TidalRoute.SEARCH_SONG)
+            },
+            onUserInfo = {
+                navController.navigate(TidalRoute.USER_INFO)
+            }
         )
 
         Spacer(modifier = Modifier.size(10.dp))
@@ -127,6 +136,16 @@ fun SongListScreen(
                         navController = navController
                     )
                 }
+                3 -> {
+                    DiscoveryMixContent(
+                        navController = navController
+                    )
+                }
+                4 -> {
+                    NewArrivalContent(
+                        navController = navController
+                    )
+                }
             }
         }
 
@@ -138,7 +157,9 @@ private fun <T> ScreenHeader(
     tabs: List<T>,
     selected: T,
     onSelect: (T) -> Unit,
-    labelProvider: (T) -> String = { it.toString() }
+    labelProvider: (T) -> String = { it.toString() },
+    onSearch: () -> Unit = {},
+    onUserInfo: () -> Unit = {}
 ) {
     Row(
         verticalAlignment = Alignment.CenterVertically
@@ -194,7 +215,7 @@ private fun <T> ScreenHeader(
         Row() {
             // 查询
             IconButton(
-                onClick = {}
+                onClick = onSearch
             ) {
                 Icon(
                     imageVector = ImageVector.vectorResource(R.drawable.icon_magnifying_glass_solid_full),
@@ -205,7 +226,7 @@ private fun <T> ScreenHeader(
             }
             // 用户信息
             IconButton(
-                onClick = {}
+                onClick = onUserInfo
             ) {
                 Icon(
                     imageVector = ImageVector.vectorResource(R.drawable.icon_user_solid_full),

@@ -43,9 +43,6 @@ class ControllerManager @Inject constructor(
     private val _controllerUiState = MutableStateFlow(ControllerUiState())
     val controllerUiState = _controllerUiState.asStateFlow()
 
-    private val _favouriteTrackIds = MutableStateFlow<Set<String>>(emptySet())
-    val favouriteTrackIds = _favouriteTrackIds.asStateFlow()
-
     private var eventCollectionJob: Job? = null
     private var itemPollingJob: Job? = null
 
@@ -110,14 +107,6 @@ class ControllerManager @Inject constructor(
         }
 
 
-    }
-
-    fun removeTrackCollection(trackId: String) {
-        _favouriteTrackIds.update { it - trackId}
-    }
-
-    fun addTrackCollection(trackId: String) {
-        _favouriteTrackIds.update { it + trackId }
     }
 
     fun clearIds() {

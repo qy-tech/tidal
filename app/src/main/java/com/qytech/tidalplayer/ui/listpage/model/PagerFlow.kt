@@ -6,6 +6,7 @@ import androidx.paging.PagingData
 import com.qytech.tidal.data.paging.Pagination
 import com.qytech.tidalplayer.ui.TidalPagingSource
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.retryWhen
 
 object PagerFlow {
 
@@ -22,18 +23,9 @@ object PagerFlow {
                     toUiModel = toUiModel
                 )
             }
-        ).flow
-//            .retryWhen { e, attempt ->
-//            if (e is HttpException && e.code() == 429) {
-//                val seconds = e.response()
-//                    ?.headers()
-//                    ?.get("Retry-After")
-//                    ?.toLongOrNull() ?: 2
-//                delay(seconds * 1000)
-//                true
-//            } else {
-//                false
-//            }
-//        }
+        ).flow.retryWhen { e, attempt ->
+            e.printStackTrace()
+            false
+        }
     }
 }

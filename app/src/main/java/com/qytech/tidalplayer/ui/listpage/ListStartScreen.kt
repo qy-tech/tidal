@@ -11,13 +11,16 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -31,7 +34,9 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -44,12 +49,18 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.layout.positionInParent
 import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.text.PlatformTextStyle
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.constraintlayout.compose.ConstraintLayout
@@ -64,10 +75,11 @@ import coil3.compose.AsyncImage
 import com.qytech.tidalplayer.R
 import com.qytech.tidalplayer.ui.TidalRoute
 import com.qytech.tidalplayer.ui.listpage.components.CustomThinSlider
+import com.qytech.tidalplayer.ui.listpage.model.ChannelType
 import com.qytech.tidalplayer.ui.listpage.model.SingleSong
 import com.qytech.tidalplayer.utils.ToastUtils
 import com.tidal.sdk.player.playbackengine.model.PlaybackState
-import timber.log.Timber
+import kotlin.math.roundToInt
 
 @Composable
 fun ListStartScreen(
@@ -76,7 +88,6 @@ fun ListStartScreen(
 ) {
     val navController = rememberNavController()
     val viewModel: ListPageViewModel = hiltViewModel()
-    val checkAuth by viewModel.checkAuth.collectAsState()
     val controllerUiState by viewModel.controllerUiState.collectAsState()
     val showController by remember {
         derivedStateOf {
@@ -104,23 +115,34 @@ fun ListStartScreen(
         }
     }
     val favouriteTracks by viewModel.collectionTrackIds.collectAsState()
+    // 漂浮按钮长按移动
+    var parentSize by remember { mutableStateOf(IntSize.Zero) }
+    var floatButtonOffset by remember { mutableStateOf(Offset.Zero) }
+    var floatButtonOriginOffset by remember { mutableStateOf(Offset.Zero) }
+    var isInit by remember { mutableStateOf(false) }
+    var floatButtonSize by remember { mutableStateOf(IntSize.Zero) }
 
     LaunchedEffect(Unit) {
         viewModel.checkAuth()
-    }
-
-    LaunchedEffect(checkAuth) {
-        if (!checkAuth) {
-            ToastUtils.show("权限不足，重新登录")
-            viewModel.logout()
-            parentNavController.popBackStack(
-                route = TidalRoute.LOGIN_START,
-                inclusive = false
-            )
+        viewModel.operationChannel.collect { type ->
+            if (type is ChannelType.CheckAuth && !type.result) {
+                ToastUtils.show("权限不足，重新登录")
+                viewModel.logout()
+                parentNavController.popBackStack(
+                    route = TidalRoute.LOGIN_START,
+                    inclusive = false
+                )
+            }
         }
     }
 
-    ConstraintLayout() {
+    ConstraintLayout(
+        modifier = Modifier
+            .fillMaxSize()
+            .onSizeChanged { size ->
+                parentSize = size
+            }
+    ) {
         val (nav, controller, floatButton) = createRefs()
 
         NavHost(
@@ -140,10 +162,15 @@ fun ListStartScreen(
                 )
             }
             composable(TidalRoute.SEARCH_SONG) {
-
+                SearchScreen(
+                    navController = navController
+                )
             }
             composable(TidalRoute.USER_INFO) {
-
+                UserInfoScreen(
+                    parentNavController = parentNavController,
+                    navController = navController
+                )
             }
             composable(
                 route = TidalRoute.ITEM_TRACK_LIST,
@@ -158,6 +185,7 @@ fun ListStartScreen(
                     },
                     navArgument("coverUrl") {
                         type = NavType.StringType
+                        nullable = true
                     },
                     navArgument("title") {
                         type = NavType.StringType
@@ -165,6 +193,7 @@ fun ListStartScreen(
                     },
                     navArgument("description") {
                         type = NavType.StringType
+                        nullable = true
                     }
                 )
             ) {
@@ -309,10 +338,45 @@ fun ListStartScreen(
             }
         } else {
             PulsingMusicButton(
-                modifier = Modifier.constrainAs(floatButton) {
-                    end.linkTo(parent.end, 50.dp)
-                    bottom.linkTo(parent.bottom, 50.dp)
-                },
+                modifier = Modifier
+                    .offset {
+                        IntOffset(
+                            floatButtonOffset.x.roundToInt(),
+                            floatButtonOffset.y.roundToInt()
+                        )
+                    }
+                    .onGloballyPositioned { layout ->
+                        if (!isInit) {
+                            isInit = true
+                            floatButtonOriginOffset = layout.positionInParent()
+                        }
+                    }
+                    .onSizeChanged { floatButtonSize = it }
+                    .pointerInput(Unit) {
+                        detectDragGesturesAfterLongPress(
+                            onDragStart = {
+                                // 可以在这里加震动反馈
+                            },
+                            onDrag = { change, dragAmount ->
+                                change.consume() // 消费事件，防止传递给父容器
+
+                                val newX = (floatButtonOffset.x + dragAmount.x).coerceIn(
+                                    minimumValue = -floatButtonOriginOffset.x,
+                                    maximumValue = parentSize.width.toFloat() - floatButtonSize.width - floatButtonOriginOffset.x
+                                )
+                                val newY = (floatButtonOffset.y + dragAmount.y).coerceIn(
+                                    minimumValue = -floatButtonOriginOffset.y,
+                                    maximumValue = parentSize.height.toFloat() - floatButtonSize.height - floatButtonOriginOffset.y
+                                )
+
+                                floatButtonOffset = Offset(newX, newY)
+                            }
+                        )
+                    }
+                    .constrainAs(floatButton) {
+                        end.linkTo(parent.end, 50.dp)
+                        bottom.linkTo(parent.bottom, 50.dp)
+                    },
                 isPlaying = isPlaying,
                 isBuffering = isBuffering,
                 onClick = {
@@ -331,7 +395,7 @@ private fun MusicController(
     currentSong: SingleSong = SingleSong(),
     isIdle: Boolean = true,
     isPlaying: Boolean = false,
-    isFavourite: (String) -> Boolean = {false},
+    isFavourite: (String) -> Boolean = { false },
     isBuffering: Boolean = false,
     progress: Float = 0f,
     totalProgress: Float = 0f,
@@ -343,7 +407,7 @@ private fun MusicController(
     onForward: () -> Unit = {},
     onBackward: () -> Unit = {},
     onHidden: () -> Unit = {},
-    onFavourite: (String, Boolean) -> Unit = {_, _ ->}
+    onFavourite: (String, Boolean) -> Unit = { _, _ -> }
 ) {
     ConstraintLayout(
         modifier = modifier

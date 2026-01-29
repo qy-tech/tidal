@@ -294,7 +294,7 @@ interface TidalApi {
     suspend fun createPlaylist(
         @Query("countryCode") countryCode: String = "US",
         @Body requestBody: CreatePlaylistRequest,
-    ): Any
+    ): PlaylistDetailResponse
 
     /**
      * 删除歌单

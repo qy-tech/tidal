@@ -1,10 +1,11 @@
 package com.qytech.tidal.cache
 
+import com.google.gson.Gson
+import com.google.gson.reflect.TypeToken
 import com.qytech.tidal.data.PageArguments
 import com.qytech.tidal.data.Playlist
 import com.qytech.tidal.data.UserInfo
 import com.tencent.mmkv.MMKV
-import timber.log.Timber
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -51,7 +52,37 @@ class TidalCacheManager @Inject constructor(
 
     fun clearUserInfo() {
         mmkv.remove(CacheKey.USER_INFO)
-        Timber.d("isLoggedIn cacheLoggedIn clear")
+    }
+
+    fun saveSearchHistory(searchText: String): List<String> {
+        val searchHistory = getSearchHistory().toMutableList().apply {
+            if (indexOf(searchText) != -1) {
+                remove(searchText)
+            }
+            add(searchText)
+        }
+        mmkv.encode(CacheKey.SEARCH_HISTORY, Gson().toJson(searchHistory))
+        return searchHistory
+    }
+
+    fun removeSearchHistory(searchText: String): List<String> {
+        val searchHistory = getSearchHistory().toMutableList().apply {
+            if (indexOf(searchText) != -1) {
+                remove(searchText)
+            }
+        }
+        mmkv.encode(CacheKey.SEARCH_HISTORY, Gson().toJson(searchHistory))
+        return searchHistory
+    }
+
+    fun getSearchHistory(): List<String> {
+        val type = object : TypeToken<List<String>>() {}.type
+        val emptyListStr = Gson().toJson(emptyList<String>())
+        return Gson().fromJson(mmkv.decodeString(CacheKey.SEARCH_HISTORY) ?: emptyListStr, type) ?: emptyList()
+    }
+
+    fun clearSearchHistory() {
+        mmkv.encode(CacheKey.SEARCH_HISTORY, Gson().toJson(emptyList<String>()))
     }
 
 }

@@ -35,6 +35,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.text.PlatformTextStyle
 import androidx.compose.ui.text.TextStyle
@@ -44,12 +45,13 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.paging.LoadState
 import androidx.paging.compose.LazyPagingItems
 import androidx.paging.compose.itemKey
 import coil3.compose.AsyncImage
+import coil3.request.ImageRequest
 import com.qytech.tidalplayer.R
+import com.qytech.tidalplayer.ui.TidalRoute
 import com.qytech.tidalplayer.ui.listpage.model.SingleSong
 
 @Composable
@@ -61,10 +63,10 @@ fun SongListView(
     currentSongId: String = "",
     glowColor: Color = Color(0xFF821AAB),
     isFavourite: (String) -> Boolean = { false },
-    onItemClick: (Int, SingleSong) -> Unit = {_, _ -> },
+    onItemClick: (Int, SingleSong) -> Unit = { _, _ -> },
     onPlaySequentially: () -> Unit = {},
     onBack: () -> Unit = {},
-    onFavourite: (String, Boolean) -> Unit = {_, _ ->},
+    onFavourite: (String, Boolean) -> Unit = { _, _ -> },
     onOtherOption: () -> Unit = {}
 ) {
     Row(
@@ -134,6 +136,17 @@ fun SongListView(
                     .verticalScroll(rememberScrollState())
             ) {
                 if (coverUrl.isNullOrBlank()) {
+                    AsyncImage(
+                        model = ImageRequest.Builder(LocalContext.current)
+                            .data(R.drawable.default_playlist_cover_160x160)
+                            .build(),
+                        contentDescription = null,
+                        modifier = Modifier
+                            .size(250.dp)
+                            .clip(RoundedCornerShape(16.dp)),
+                        contentScale = ContentScale.Crop
+                    )
+                } else if (coverUrl == TidalRoute.TRACK_LIST_ID) {
                     TidalTracksCover(
                         size = 250.dp
                     )
@@ -245,7 +258,7 @@ fun RightSongList(
     currentSongId: String = "",
     isFavourite: (String) -> Boolean,
     onItemClick: (Int, SingleSong) -> Unit,
-    onFavourite: (String, Boolean) -> Unit = {_, _ ->},
+    onFavourite: (String, Boolean) -> Unit = { _, _ -> },
     onOtherOption: () -> Unit = {}
 ) {
     Column(
@@ -391,6 +404,7 @@ fun RightSongList(
                     CircularProgressIndicator()
                 }
             }
+
             is LoadState.NotLoading -> {
                 if (dataList.itemCount == 0) {
                     Box(
@@ -406,6 +420,7 @@ fun RightSongList(
                     }
                 }
             }
+
             is LoadState.Error -> {
 
             }
@@ -420,7 +435,7 @@ fun SongItem(
     isCurrentItem: Boolean = false,
     isFavourite: Boolean = false,
     onClick: (Int, SingleSong) -> Unit = { _, _ -> },
-    onFavourite: (String, Boolean) -> Unit = {_, _ ->},
+    onFavourite: (String, Boolean) -> Unit = { _, _ -> },
     onOtherOption: () -> Unit = {}
 ) {
     val textColor = Color(0xffA0A0A0)
@@ -537,7 +552,8 @@ fun SongItem(
                 .width(spec)
         )
         Box(
-            modifier = Modifier.width(35.dp)
+            modifier = Modifier
+                .width(35.dp)
                 .clickable(
                     onClick = { onFavourite.invoke(item.id, isFavourite) }
                 ),
@@ -577,7 +593,8 @@ fun SongItem(
         Icon(
             imageVector = ImageVector.vectorResource(R.drawable.icon_ellipsis_solid_full),
             contentDescription = null,
-            modifier = Modifier.size(30.dp)
+            modifier = Modifier
+                .size(30.dp)
                 .clickable(
                     onClick = onOtherOption
                 ),

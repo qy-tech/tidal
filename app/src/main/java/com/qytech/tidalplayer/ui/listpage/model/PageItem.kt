@@ -24,5 +24,7 @@ enum class DataType{
     ALBUM,
     TRACK,
     ARTIST,
-    MY_MIX
+    MY_MIX,
+    DISCOVERY_MIX,
+    NEW_ARRIVAL
 }
