@@ -284,6 +284,7 @@ interface TidalApi {
         @Query("page[cursor]") pageCursor: String? = null,
         @Query("sort") sort: String = "-createdAt",
         @Query("include") include: String = "coverArt",
+        @Query("filter[id]") playlistId: String? = null,
         @Query("filter[owners.id]") userId: String,
     ): PlaylistsResponse
 

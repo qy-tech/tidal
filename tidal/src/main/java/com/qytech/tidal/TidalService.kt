@@ -57,31 +57,27 @@ object TidalService {
     }
 
     fun getPlayerInstance(context: Context): Player? {
-        if (player == null) {
-            synchronized(TidalService::class) {
-                if (player == null && credentialsProvider != null) {
-                    player = Player(
-                        context.applicationContext as Application,
-                        credentialsProvider!!,
-                        EventProducer.getInstance(
-                            credentialsProvider!!,
-                            EventsConfig(
-                                Int.MAX_VALUE,
-                                emptySet(),
-                                "player-sample-1.0.0"
-                            ),
-                            context,
-                            CoroutineScope(Dispatchers.IO)
-                        )
-                            .eventSender,
-                        userClientIdSupplier = null,
-                        isOfflineMode = false,
-                        isDebuggable = BuildConfig.DEBUG,
-                        cacheProvider = CacheProvider.Internal(),
-                        version = "player-sample-1.0.0"
-                    )
-                }
-            }
+        if (credentialsProvider != null) {
+            player = Player(
+                context.applicationContext as Application,
+                credentialsProvider!!,
+                EventProducer.getInstance(
+                    credentialsProvider!!,
+                    EventsConfig(
+                        Int.MAX_VALUE,
+                        emptySet(),
+                        "player-sample-1.0.0"
+                    ),
+                    context,
+                    CoroutineScope(Dispatchers.IO)
+                )
+                    .eventSender,
+                userClientIdSupplier = null,
+                isOfflineMode = false,
+                isDebuggable = BuildConfig.DEBUG,
+                cacheProvider = CacheProvider.Internal(),
+                version = "player-sample-1.0.0"
+            )
         }
         return player
     }

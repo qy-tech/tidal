@@ -4,6 +4,7 @@ import com.qytech.tidalplayer.ui.listpage.model.DataType
 
 object TidalRoute {
     const val TRACK_LIST_ID = "for you tracks"
+    const val TRACK_LIST_SHRINK_ID = "for you tracks shrink"
 
     const val LOGIN_START = "login_start"
     const val LOGIN_WEB = "login_web"

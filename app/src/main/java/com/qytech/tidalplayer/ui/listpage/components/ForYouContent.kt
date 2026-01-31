@@ -1,5 +1,6 @@
 package com.qytech.tidalplayer.ui.listpage.components
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -85,6 +86,13 @@ fun ForYouContent(
     val trackData = viewModel.collectionTracksPagingData.collectAsLazyPagingItems()
     val emptySongList = emptyFlow<PagingData<SongList>>().collectAsLazyPagingItems()
 
+    // 滑动侧边栏
+    val panelState by viewModel.panelState.collectAsState()
+
+    BackHandler(enabled = panelState.showPanel) {
+        viewModel.closePanel()
+    }
+
     LaunchedEffect(controllerUiState.playbackState) {
         if (controllerUiState.playbackState == PlaybackState.IDLE) {
             // 清空id
@@ -100,7 +108,7 @@ fun ForYouContent(
 
     LaunchedEffect(trackData.itemCount, playingListId) {
         if (trackData.loadState.refresh is LoadState.NotLoading) {
-            viewModel.setCurrentSongList(playingListId, trackData.itemSnapshotList.items)
+            viewModel.setCurrentSongList(TidalRoute.TRACK_LIST_ID, trackData.itemSnapshotList.items)
             if (!trackData.loadState.append.endOfPaginationReached) {
                 if (trackData.itemCount > 0) {
                     // 让他默认全部加载完
@@ -209,11 +217,17 @@ fun ForYouContent(
                                 val route = TidalRoute.getItemTrackListRoute(
                                     listId = listId,
                                     dataType = DataType.TRACK,
-                                    coverUrl = TidalRoute.TRACK_LIST_ID,
+                                    coverUrl = listId,
                                     title = "Collection Tracks",
                                     description = ""
                                 )
                                 navController.navigate(route)
+                            },
+                            onItemOtherOption = { singleSong ->
+                                viewModel.openPanel(
+                                    dataType = DataType.TRACK,
+                                    singleSong = singleSong
+                                )
                             }
                         )
                     }
@@ -224,7 +238,7 @@ fun ForYouContent(
                             isPlaying = isPlaying,
                             dataList = artistData,
                             onClick = { songList ->
-                                // 跳转到单曲界面
+                                // 跳转到歌单界面
                                 val route = TidalRoute.getPlaylistAlbumListRoute(
                                     title = songList.title,
                                     artistId = songList.id,
@@ -249,7 +263,8 @@ fun ForYouContent(
         if (artistData.loadState.refresh is LoadState.Loading
             || trackData.loadState.refresh is LoadState.Loading
             || albumData.loadState.refresh is LoadState.Loading
-            || playlistData.loadState.refresh is LoadState.Loading) {
+            || playlistData.loadState.refresh is LoadState.Loading
+        ) {
             Box(
                 modifier = Modifier
                     .fillMaxSize(),
@@ -407,7 +422,8 @@ private fun ForYouTracks(
     onClick: (Int, SingleSong) -> Unit,
     onRefresh: () -> Unit = {},
     onFavourite: (String, Boolean) -> Unit,
-    onSeeAll: () -> Unit = {}
+    onSeeAll: () -> Unit = {},
+    onItemOtherOption: (SingleSong) -> Unit = {}
 ) {
     Column(
         modifier = Modifier.background(
@@ -470,9 +486,7 @@ private fun ForYouTracks(
                         isFavourite = isFavourite.invoke(item.id),
                         onClick = { onClick.invoke(index, item) },
                         onFavourite = onFavourite,
-                        onOtherOption = {
-
-                        }
+                        onOtherOption = onItemOtherOption
                     )
                 }
             }

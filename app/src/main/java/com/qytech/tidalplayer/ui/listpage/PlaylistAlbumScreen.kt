@@ -80,6 +80,7 @@ fun PlaylistAlbumScreen(
             controllerUiState.playbackState == PlaybackState.PLAYING || controllerUiState.playbackState == PlaybackState.STALLED
         }
     }
+    val favouriteArtists by viewModel.collectionArtistIds.collectAsState()
 
     Box(
         modifier = Modifier
@@ -90,10 +91,19 @@ fun PlaylistAlbumScreen(
         contentAlignment = Alignment.Center
     ) {
         PlaylistAlbumListContent(
+            artistId = artistId,
             title = title,
             dataList = pagingItem,
             currentListId = currentListId,
             isPlaying = isPlaying,
+            isFavourite = { id -> favouriteArtists.contains(id) },
+            onFavourite = { id, isFavourite ->
+                if (isFavourite) {
+                    viewModel.removeArtistToCollection(id)
+                } else {
+                    viewModel.addArtistToCollection(id)
+                }
+            },
             onClick = { songList ->
                 // 跳转到单曲界面
                 val route = TidalRoute.getItemTrackListRoute(
@@ -114,11 +124,14 @@ fun PlaylistAlbumScreen(
 
 @Composable
 private fun PlaylistAlbumListContent(
+    artistId: String = "",
     title: String = "Playlist",
     glowColor: Color = Color.Transparent,
     dataList: LazyPagingItems<SongList>,
     currentListId: String = "",
     isPlaying: Boolean = false,
+    isFavourite: (String) -> Boolean = { false },
+    onFavourite: (String, Boolean) -> Unit = {_, _ ->},
     onClick: (SongList) -> Unit = {},
     onBack: () -> Unit
 ) {
@@ -196,10 +209,29 @@ private fun PlaylistAlbumListContent(
                         )
                     ),
                     fontSize = 30.sp,
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier.weight(1f),
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
+                Box(
+                    modifier = Modifier
+                        .size(40.dp)
+                        .background(
+                            color = Color.Transparent,
+                            shape = CircleShape
+                        )
+                        .clickable(onClick = { onFavourite.invoke(artistId, isFavourite.invoke(artistId)) }),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = ImageVector.vectorResource(
+                            if (isFavourite.invoke(artistId)) R.drawable.icon_heart_solid_full else R.drawable.icon_heart_regular_full
+                        ),
+                        contentDescription = null,
+                        modifier = Modifier.size(25.dp),
+                        tint = if (isFavourite.invoke(artistId)) Color(0xff00e5ff) else Color(0xffa0a0a0)
+                    )
+                }
             }
         }
         // 主内容

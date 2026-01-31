@@ -10,7 +10,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import timber.log.Timber
 
 data class ControllerUiState(
-    val currentSong: SingleSong = SingleSong(),
+    val currentSong: SingleSong? = null,
     val currentIndex: Int = -1,
     val beforeSong: SingleSong? = null,
     val nextSong: SingleSong? = null,

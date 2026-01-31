@@ -13,6 +13,7 @@ import com.tidal.sdk.auth.model.AuthConfig
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.flow
@@ -45,13 +46,12 @@ class TidalViewModel @Inject constructor(
     val isLoggedIn = tidalLogin.loginUiState
         .map { state ->
             val cacheLoggedIn = !tidalCacheManager.getUserInfo()?.id.isNullOrBlank()
-
             Timber.d("isLoggedIn: ${state.isLoggedIn}, cacheLoggedIn: ${cacheLoggedIn}, cacheClear: ${state.cacheClear}")
             state.isLoggedIn || (cacheLoggedIn && !state.cacheClear)
         }
         .stateIn(
             scope = viewModelScope,
-            started = SharingStarted.WhileSubscribed(5_000),
+            started = SharingStarted.WhileSubscribed(0),
             initialValue = false
         )
 

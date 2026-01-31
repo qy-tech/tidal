@@ -60,6 +60,7 @@ fun SongListView(
     title: String = "",
     description: String? = null,
     daraList: LazyPagingItems<SingleSong>,
+    isCurrentListIdPlaying: Boolean = false,
     currentSongId: String = "",
     glowColor: Color = Color(0xFF821AAB),
     isFavourite: (String) -> Boolean = { false },
@@ -67,7 +68,8 @@ fun SongListView(
     onPlaySequentially: () -> Unit = {},
     onBack: () -> Unit = {},
     onFavourite: (String, Boolean) -> Unit = { _, _ -> },
-    onOtherOption: () -> Unit = {}
+    onOtherOption: () -> Unit = {},
+    onItemOtherOption: (SingleSong) -> Unit = {}
 ) {
     Row(
         modifier = Modifier
@@ -111,24 +113,48 @@ fun SongListView(
                 .padding(horizontal = 30.dp)
         ) {
             Spacer(modifier = Modifier.size(20.dp))
-            // 退出按钮
-            Box(
-                modifier = Modifier
-                    .size(40.dp)
-                    .background(
-                        color = Color.White.copy(alpha = 0.1f),
-                        shape = CircleShape
-                    )
-                    .clickable(onClick = onBack),
-                contentAlignment = Alignment.Center
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.Absolute.SpaceBetween
             ) {
-                Icon(
-                    imageVector = ImageVector.vectorResource(R.drawable.icon_chevron_left_solid_full),
-                    contentDescription = null,
-                    modifier = Modifier.size(25.dp),
-                    tint = Color.White
-                )
+                // 退出按钮
+                Box(
+                    modifier = Modifier
+                        .size(40.dp)
+                        .background(
+                            color = Color.White.copy(alpha = 0.1f),
+                            shape = CircleShape
+                        )
+                        .clickable(onClick = onBack),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = ImageVector.vectorResource(R.drawable.icon_chevron_left_solid_full),
+                        contentDescription = null,
+                        modifier = Modifier.size(25.dp),
+                        tint = Color.White
+                    )
+                }
+                // 功能按钮
+                Box(
+                    modifier = Modifier
+                        .size(40.dp)
+                        .background(
+                            color = Color.White.copy(alpha = 0.1f),
+                            shape = CircleShape
+                        )
+                        .clickable(onClick = onOtherOption),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = ImageVector.vectorResource(R.drawable.icon_ellipsis_solid_full),
+                        contentDescription = null,
+                        modifier = Modifier.size(25.dp),
+                        tint = Color.White
+                    )
+                }
             }
+
             // 图片
             Spacer(modifier = Modifier.size(15.dp))
             Column(
@@ -212,7 +238,9 @@ fun SongListView(
                         horizontalArrangement = Arrangement.Center
                     ) {
                         Icon(
-                            imageVector = ImageVector.vectorResource(R.drawable.icon_play_solid_full),
+                            imageVector = ImageVector.vectorResource(
+                                if (isCurrentListIdPlaying) R.drawable.icon_pause_solid_full else R.drawable.icon_play_solid_full
+                            ),
                             contentDescription = null,
                             modifier = Modifier.size(20.dp)
                         )
@@ -246,7 +274,7 @@ fun SongListView(
             isFavourite = isFavourite,
             onItemClick = onItemClick,
             onFavourite = onFavourite,
-            onOtherOption = onOtherOption
+            onItemOtherOption = onItemOtherOption
         )
     }
 }
@@ -259,7 +287,7 @@ fun RightSongList(
     isFavourite: (String) -> Boolean,
     onItemClick: (Int, SingleSong) -> Unit,
     onFavourite: (String, Boolean) -> Unit = { _, _ -> },
-    onOtherOption: () -> Unit = {}
+    onItemOtherOption: (SingleSong) -> Unit = {}
 ) {
     Column(
         modifier = modifier
@@ -388,7 +416,7 @@ fun RightSongList(
                             isFavourite = isFavourite(item.id),
                             onClick = onItemClick,
                             onFavourite = onFavourite,
-                            onOtherOption = onOtherOption
+                            onOtherOption = onItemOtherOption
                         )
                     }
                 }
@@ -436,7 +464,7 @@ fun SongItem(
     isFavourite: Boolean = false,
     onClick: (Int, SingleSong) -> Unit = { _, _ -> },
     onFavourite: (String, Boolean) -> Unit = { _, _ -> },
-    onOtherOption: () -> Unit = {}
+    onOtherOption: (SingleSong) -> Unit = {}
 ) {
     val textColor = Color(0xffA0A0A0)
     val spec = 15.dp
@@ -596,7 +624,7 @@ fun SongItem(
             modifier = Modifier
                 .size(30.dp)
                 .clickable(
-                    onClick = onOtherOption
+                    onClick = { onOtherOption.invoke(item) }
                 ),
             tint = textColor
         )

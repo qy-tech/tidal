@@ -1,13 +1,20 @@
 package com.qytech.tidalplayer.ui.listpage
 
 import android.content.Context
+import androidx.compose.runtime.mutableStateOf
+import androidx.paging.compose.LazyPagingItems
 import com.qytech.tidalplayer.ui.listpage.model.DataType
+import com.qytech.tidalplayer.ui.listpage.model.ItemInfo
+import com.qytech.tidalplayer.ui.listpage.model.PanelData
+import com.qytech.tidalplayer.ui.listpage.model.SingleSong
+import com.qytech.tidalplayer.ui.listpage.model.SongList
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import javax.inject.Inject
 import javax.inject.Singleton
+import kotlin.math.sin
 
 @Singleton
 class GlobalManager @Inject constructor(
@@ -30,6 +37,10 @@ class GlobalManager @Inject constructor(
     private val _newArrivalRefresh = MutableStateFlow(0L)
     val newArrivalRefresh = _newArrivalRefresh.asStateFlow()
 
+    // 右侧滑栏
+    private val _panelState = MutableStateFlow(PanelData())
+    val panelState = _panelState.asStateFlow()
+
     fun refreshData(type: DataType? = null) {
         when (type) {
             DataType.PLAY_LIST -> _playlistRefresh.update { it + 1 }
@@ -44,6 +55,29 @@ class GlobalManager @Inject constructor(
                 _tracksRefresh.update { it + 1 }
                 _artistsRefresh.update { it + 1 }
             }
+        }
+    }
+
+    fun openPanel(
+        singleSong: SingleSong? = null,
+        dataType: DataType? = null,
+        songList: SongList? = null,
+        lazyList: LazyPagingItems<SingleSong>? = null
+    ) {
+        _panelState.update {
+            it.copy(
+                showPanel = true,
+                dataType = dataType,
+                singleSong = singleSong,
+                songList = songList,
+                lazyList = lazyList
+            )
+        }
+    }
+
+    fun closePanel() {
+        _panelState.update {
+            PanelData()
         }
     }
 

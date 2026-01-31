@@ -36,7 +36,10 @@ fun TracksResponse.toTrackDetailList(): List<TrackDetail> {
     return this.data.map {
         TrackDetail(
             trackInfo = it.toTrack(),
-            artists = artists.filter { artist -> it.relationships.artists.data?.firstOrNull()?.id == artist.id },
+            artists = artists.filter { artist ->
+                // todo 要是想弄多作者的话，就需要修改这个地方，这个地方限制死了只为首个，也就是说主要作者
+                it.relationships.artists.data?.firstOrNull()?.id == artist.id
+            },
             album = albums.first { album -> it.relationships.albums.data?.firstOrNull()?.id == album.id })
     }
 }

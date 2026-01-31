@@ -156,8 +156,7 @@ class TidalLogin @Inject constructor(
             // 需要缓存清除
             tidalCacheManager.clearUserInfo()
             _loginUiState.update {
-                it.copy(
-                    isLoggedIn = false,
+                LoginUiState(
                     cacheClear = true
                 )
             }
@@ -177,7 +176,7 @@ class TidalLogin @Inject constructor(
                     }
 
                     is CredentialsUpdatedMessage -> {
-                        saveToken()
+                        if (it.credentials != null) saveToken()
                     }
                 }
             }

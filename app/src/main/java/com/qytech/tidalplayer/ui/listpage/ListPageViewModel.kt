@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.paging.PagingData
 import androidx.paging.cachedIn
+import androidx.paging.compose.LazyPagingItems
 import com.qytech.tidal.cache.TidalCacheManager
 import com.qytech.tidal.data.Album
 import com.qytech.tidal.data.Artist
@@ -51,6 +52,9 @@ class ListPageViewModel @Inject constructor(
     val currentListId = controllerManager.currentListId
     val currentSongId = controllerManager.currentSongId
     val collectionTrackIds = tidalRepository.collectionTrackIds
+    val collectionArtistIds = tidalRepository.collectionArtistIds
+    val collectionAlbumIds = tidalRepository.collectionAlbumIds
+    val collectionPlaylistIds = tidalRepository.collectionPlaylistIds
     private val _operationChannel = Channel<ChannelType>()
     val operationChannel = _operationChannel.receiveAsFlow()
     private val myMixTracksHashMap = hashMapOf<String, Flow<PagingData<SingleSong>>>()
@@ -73,6 +77,12 @@ class ListPageViewModel @Inject constructor(
     val myMixesRefresh = globalManager.myMixesRefresh
     val discoveryMixesRefresh = globalManager.discoveryMixesRefresh
     val newArrivalRefresh = globalManager.newArrivalRefresh
+
+    val panelState = globalManager.panelState
+
+    init {
+        controllerManager.initController()
+    }
 
     @OptIn(ExperimentalCoroutinesApi::class)
     val collectionPlaylistPagingData = playlistRefresh.flatMapLatest {
@@ -517,7 +527,8 @@ class ListPageViewModel @Inject constructor(
                                 )
                             )
                         } else {
-                            ToastUtils.show(e.message ?: "异常错误")
+                            Timber.w(e.message ?: "异常错误")
+//                            ToastUtils.show(e.message ?: "异常错误")
                         }
                     }
                 }
@@ -545,8 +556,9 @@ class ListPageViewModel @Inject constructor(
         controllerManager.clearIds()
     }
 
-    fun setCurrentListId(listId: String) {
-        controllerManager.setCurrentListId(listId)
+    fun setCurrentListId(listId: String, isClearBeforeData: Boolean = true) {
+        Timber.d("设置歌单id：$listId")
+        controllerManager.setCurrentListId(listId, isClearBeforeData)
     }
 
     fun setCurrentSongList(listId: String, songList: List<SingleSong>) {
@@ -554,7 +566,12 @@ class ListPageViewModel @Inject constructor(
     }
 
     fun loadAndPlaySong(index: Int, song: SingleSong) {
+        Timber.d("songId: ${song}")
         controllerManager.loadAndPlaySong(index, song)
+    }
+
+    fun playToNext(index: Int, nextSong: SingleSong) {
+        controllerManager.playToNext(index, nextSong)
     }
 
     fun playSong() {
@@ -582,6 +599,8 @@ class ListPageViewModel @Inject constructor(
     }
 
     suspend fun logout() {
+        // 清除音乐控制器数据
+        controllerManager.clearAll()
         tidalLogin.logout()
     }
 
@@ -612,6 +631,102 @@ class ListPageViewModel @Inject constructor(
                 if (!userId.isNullOrBlank()) {
                     tidalRepository.removeTracksFromCollection(userId, listOf(trackId))
                     refreshData(DataType.TRACK)
+                } else {
+                    ToastUtils.show("取消收藏失败，用户Id为空")
+                }
+            } catch (e: Exception) {
+                ToastUtils.show("取消收藏失败")
+            }
+        }
+    }
+
+    fun addPlaylistToCollection(listId: String) {
+        val userId = tidalCacheManager.getUserInfo()?.id
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                if (!userId.isNullOrBlank()) {
+                    tidalRepository.addPlaylistsToCollection(userId, listOf(listId))
+                    refreshData(DataType.PLAY_LIST)
+                } else {
+                    ToastUtils.show("添加收藏失败，用户Id为空")
+                }
+            } catch (e: Exception) {
+                ToastUtils.show("添加收藏失败")
+            }
+        }
+    }
+
+    fun removePlaylistToCollection(listId: String) {
+        val userId = tidalCacheManager.getUserInfo()?.id
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                if (!userId.isNullOrBlank()) {
+                    tidalRepository.removePlaylistsFromCollection(userId, listOf(listId))
+                    refreshData(DataType.PLAY_LIST)
+                } else {
+                    ToastUtils.show("取消收藏失败，用户Id为空")
+                }
+            } catch (e: Exception) {
+                ToastUtils.show("取消收藏失败")
+            }
+        }
+    }
+
+    fun addAlbumToCollection(listId: String) {
+        val userId = tidalCacheManager.getUserInfo()?.id
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                if (!userId.isNullOrBlank()) {
+                    tidalRepository.addAlbumsToCollection(userId, listOf(listId))
+                    refreshData(DataType.ALBUM)
+                } else {
+                    ToastUtils.show("添加收藏失败，用户Id为空")
+                }
+            } catch (e: Exception) {
+                ToastUtils.show("添加收藏失败")
+            }
+        }
+    }
+
+    fun removeAlbumToCollection(listId: String) {
+        val userId = tidalCacheManager.getUserInfo()?.id
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                if (!userId.isNullOrBlank()) {
+                    tidalRepository.removeAlbumsFromCollection(userId, listOf(listId))
+                    refreshData(DataType.ALBUM)
+                } else {
+                    ToastUtils.show("取消收藏失败，用户Id为空")
+                }
+            } catch (e: Exception) {
+                ToastUtils.show("取消收藏失败")
+            }
+        }
+    }
+
+    fun addArtistToCollection(artistId: String) {
+        val userId = tidalCacheManager.getUserInfo()?.id
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                if (!userId.isNullOrBlank()) {
+                    tidalRepository.addArtistsToCollection(userId, listOf(artistId))
+                    refreshData(DataType.ARTIST)
+                } else {
+                    ToastUtils.show("添加收藏失败，用户Id为空")
+                }
+            } catch (e: Exception) {
+                ToastUtils.show("添加收藏失败")
+            }
+        }
+    }
+
+    fun removeArtistToCollection(artistId: String) {
+        val userId = tidalCacheManager.getUserInfo()?.id
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                if (!userId.isNullOrBlank()) {
+                    tidalRepository.removeArtistsFromCollection(userId, listOf(artistId))
+                    refreshData(DataType.ARTIST)
                 } else {
                     ToastUtils.show("取消收藏失败，用户Id为空")
                 }
@@ -679,6 +794,21 @@ class ListPageViewModel @Inject constructor(
             }
             _showLoading.update { false }
         }
+    }
+
+    fun openPanel(
+        singleSong: SingleSong? = null,
+        dataType: DataType? = null,
+        songList: SongList? = null,
+        lazyList: LazyPagingItems<SingleSong>? = null
+    ) {
+        globalManager.openPanel(singleSong, dataType, songList, lazyList)
+    }
+
+    fun open
+
+    fun closePanel() {
+        globalManager.closePanel()
     }
 
     private fun MutableStateFlow<Set<String>>.addItemId(itemId: String) {

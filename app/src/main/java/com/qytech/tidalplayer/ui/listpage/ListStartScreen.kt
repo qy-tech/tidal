@@ -1,6 +1,7 @@
 package com.qytech.tidalplayer.ui.listpage
 
 import android.text.format.DateUtils
+import androidx.activity.compose.BackHandler
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
@@ -75,7 +76,10 @@ import coil3.compose.AsyncImage
 import com.qytech.tidalplayer.R
 import com.qytech.tidalplayer.ui.TidalRoute
 import com.qytech.tidalplayer.ui.listpage.components.CustomThinSlider
+import com.qytech.tidalplayer.ui.listpage.components.RightSidePanel
+import com.qytech.tidalplayer.ui.listpage.components.OptionSlideBarContent
 import com.qytech.tidalplayer.ui.listpage.model.ChannelType
+import com.qytech.tidalplayer.ui.listpage.model.DataType
 import com.qytech.tidalplayer.ui.listpage.model.SingleSong
 import com.qytech.tidalplayer.utils.ToastUtils
 import com.tidal.sdk.player.playbackengine.model.PlaybackState
@@ -115,12 +119,23 @@ fun ListStartScreen(
         }
     }
     val favouriteTracks by viewModel.collectionTrackIds.collectAsState()
+    val favouriteArtists by viewModel.collectionArtistIds.collectAsState()
+    val favouriteAlbums by viewModel.collectionAlbumIds.collectAsState()
+    val favouritePlaylists by viewModel.collectionPlaylistIds.collectAsState()
     // 漂浮按钮长按移动
     var parentSize by remember { mutableStateOf(IntSize.Zero) }
     var floatButtonOffset by remember { mutableStateOf(Offset.Zero) }
     var floatButtonOriginOffset by remember { mutableStateOf(Offset.Zero) }
     var isInit by remember { mutableStateOf(false) }
     var floatButtonSize by remember { mutableStateOf(IntSize.Zero) }
+    // 滑动侧边栏
+    val panelState by viewModel.panelState.collectAsState()
+    // 当前播放
+    val currentListId by viewModel.currentListId.collectAsState()
+
+    BackHandler(enabled = panelState.showPanel) {
+        viewModel.closePanel()
+    }
 
     LaunchedEffect(Unit) {
         viewModel.checkAuth()
@@ -136,263 +151,499 @@ fun ListStartScreen(
         }
     }
 
-    ConstraintLayout(
-        modifier = Modifier
-            .fillMaxSize()
-            .onSizeChanged { size ->
-                parentSize = size
-            }
-    ) {
-        val (nav, controller, floatButton) = createRefs()
-
-        NavHost(
-            navController = navController,
-            startDestination = TidalRoute.SONG_LIST,
-            modifier = Modifier.constrainAs(nav) {
-                top.linkTo(parent.top)
-                bottom.linkTo(parent.bottom)
-                start.linkTo(parent.start)
-                end.linkTo(parent.end)
-            }
-        ) {
-            composable(TidalRoute.SONG_LIST) {
-                SongListScreen(
-                    navController = navController,
-                    onBack = onBack
-                )
-            }
-            composable(TidalRoute.SEARCH_SONG) {
-                SearchScreen(
-                    navController = navController
-                )
-            }
-            composable(TidalRoute.USER_INFO) {
-                UserInfoScreen(
-                    parentNavController = parentNavController,
-                    navController = navController
-                )
-            }
-            composable(
-                route = TidalRoute.ITEM_TRACK_LIST,
-                arguments = listOf(
-                    navArgument("listId") {
-                        type = NavType.StringType
-                        defaultValue = ""
-                    },
-                    navArgument("dataType") {
-                        type = NavType.IntType
-                        defaultValue = -1
-                    },
-                    navArgument("coverUrl") {
-                        type = NavType.StringType
-                        nullable = true
-                    },
-                    navArgument("title") {
-                        type = NavType.StringType
-                        defaultValue = ""
-                    },
-                    navArgument("description") {
-                        type = NavType.StringType
-                        nullable = true
-                    }
-                )
-            ) {
-                val listId = it.arguments?.getString("listId") ?: ""
-                val dataType = it.arguments?.getInt("dataType") ?: -1
-                val coverUrl = it.arguments?.getString("coverUrl")
-                val title = it.arguments?.getString("title") ?: ""
-                val description = it.arguments?.getString("description")
-                ItemTrackListScreen(
-                    navController = navController,
-                    listId = listId,
-                    dataType = dataType,
-                    coverUrl = coverUrl,
-                    title = title,
-                    description = description
-                )
-            }
-            composable(
-                route = TidalRoute.PLAYLIST_ALBUM_LIST,
-                arguments = listOf(
-                    navArgument("artistId") {
-                        type = NavType.StringType
-                        defaultValue = ""
-                    },
-                    navArgument("dataType") {
-                        type = NavType.IntType
-                        defaultValue = -1
-                    },
-                    navArgument("title") {
-                        type = NavType.StringType
-                        defaultValue = ""
-                    },
-                )
-            ) {
-                val artistId = it.arguments?.getString("artistId") ?: ""
-                val dataType = it.arguments?.getInt("dataType") ?: -1
-                val title = it.arguments?.getString("title") ?: ""
-                PlaylistAlbumScreen(
-                    navController = navController,
-                    artistId = artistId,
-                    title = title,
-                    dataType = dataType
-                )
-            }
-            composable(
-                route = TidalRoute.ARTIST_LIST,
-                arguments = listOf(
-                    navArgument("title") {
-                        type = NavType.StringType
-                        defaultValue = ""
-                    },
-                )
-            ) {
-                val title = it.arguments?.getString("title") ?: ""
-                ArtistScreen(
-                    navController = navController,
-                    title = title
-                )
-            }
-        }
-
-        if (showController) {
+    RightSidePanel(
+        showPanel = panelState.showPanel,
+//        startPositionPx = panelWidthPx,
+        onClickScrim = {
+            viewModel.closePanel()
+        },
+        mainContent = {
             ConstraintLayout(
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .wrapContentHeight()
-                    .constrainAs(controller) {
+                    .fillMaxSize()
+                    .onSizeChanged { size ->
+                        parentSize = size
+                    }
+            ) {
+                val (nav, controller, floatButton, leftNavCover) = createRefs()
+
+                NavHost(
+                    navController = navController,
+                    startDestination = TidalRoute.SONG_LIST,
+                    modifier = Modifier.constrainAs(nav) {
+                        top.linkTo(parent.top)
                         bottom.linkTo(parent.bottom)
                         start.linkTo(parent.start)
                         end.linkTo(parent.end)
                     }
+                ) {
+                    composable(TidalRoute.SONG_LIST) {
+                        SongListScreen(
+                            navController = navController,
+                            onBack = onBack
+                        )
+                    }
+                    composable(TidalRoute.SEARCH_SONG) {
+                        SearchScreen(
+                            navController = navController
+                        )
+                    }
+                    composable(TidalRoute.USER_INFO) {
+                        UserInfoScreen(
+                            parentNavController = parentNavController,
+                            navController = navController
+                        )
+                    }
+                    composable(
+                        route = TidalRoute.ITEM_TRACK_LIST,
+                        arguments = listOf(
+                            navArgument("listId") {
+                                type = NavType.StringType
+                                defaultValue = ""
+                            },
+                            navArgument("dataType") {
+                                type = NavType.IntType
+                                defaultValue = -1
+                            },
+                            navArgument("coverUrl") {
+                                type = NavType.StringType
+                                nullable = true
+                            },
+                            navArgument("title") {
+                                type = NavType.StringType
+                                defaultValue = ""
+                            },
+                            navArgument("description") {
+                                type = NavType.StringType
+                                nullable = true
+                            }
+                        )
+                    ) {
+                        val listId = it.arguments?.getString("listId") ?: ""
+                        val dataType = it.arguments?.getInt("dataType") ?: -1
+                        val coverUrl = it.arguments?.getString("coverUrl")
+                        val title = it.arguments?.getString("title") ?: ""
+                        val description = it.arguments?.getString("description")
+                        ItemTrackListScreen(
+                            navController = navController,
+                            listId = listId,
+                            dataType = dataType,
+                            coverUrl = coverUrl,
+                            title = title,
+                            description = description
+                        )
+                    }
+                    composable(
+                        route = TidalRoute.PLAYLIST_ALBUM_LIST,
+                        arguments = listOf(
+                            navArgument("artistId") {
+                                type = NavType.StringType
+                                defaultValue = ""
+                            },
+                            navArgument("dataType") {
+                                type = NavType.IntType
+                                defaultValue = -1
+                            },
+                            navArgument("title") {
+                                type = NavType.StringType
+                                defaultValue = ""
+                            },
+                        )
+                    ) {
+                        val artistId = it.arguments?.getString("artistId") ?: ""
+                        val dataType = it.arguments?.getInt("dataType") ?: -1
+                        val title = it.arguments?.getString("title") ?: ""
+                        PlaylistAlbumScreen(
+                            navController = navController,
+                            artistId = artistId,
+                            title = title,
+                            dataType = dataType
+                        )
+                    }
+                    composable(
+                        route = TidalRoute.ARTIST_LIST,
+                        arguments = listOf(
+                            navArgument("title") {
+                                type = NavType.StringType
+                                defaultValue = ""
+                            },
+                        )
+                    ) {
+                        val title = it.arguments?.getString("title") ?: ""
+                        ArtistScreen(
+                            navController = navController,
+                            title = title
+                        )
+                    }
+                }
+
+                if (showController) {
+                    ConstraintLayout(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .wrapContentHeight()
+                            .constrainAs(controller) {
+                                bottom.linkTo(parent.bottom)
+                                start.linkTo(parent.start)
+                                end.linkTo(parent.end)
+                            }
 //                    .background(
 //                        color = Color.Red
 //                    )
-                    .clickable(
-                        indication = null,
-                        interactionSource = remember { MutableInteractionSource() }
-                    ) {}
-            ) {
-                val content = createRef()
-                MusicController(
-                    currentSong = currentSong,
-                    isIdle = isPlayerIdle,
-                    isPlaying = isPlaying,
-                    isFavourite = { id -> favouriteTracks.contains(id) },
-                    isBuffering = isBuffering,
-                    sliderEnabled = !isPlayerIdle,
-                    progress = controllerUiState.currentProgress,
-                    totalProgress = controllerUiState.totalProgress,
-                    sliderValueRange = 0f..controllerUiState.totalProgress.coerceAtLeast(0f),
-                    modifier = Modifier
-                        .constrainAs(content) {
-                            top.linkTo(parent.top, 30.dp)
-                            bottom.linkTo(parent.bottom, 15.dp)
-                            start.linkTo(parent.start)
-                            end.linkTo(parent.end)
-                        }
-                        .padding(horizontal = 40.dp),
-                    onSliderValueChanged = { value ->
-                        viewModel.setDragProgress(value)
-                    },
-                    onSliderValueChangedFinish = {
-                        viewModel.setDragProgress(null)
-                    },
-                    onPlayOrPause = {
-                        val state = controllerUiState.playbackState
-                        if (state != null && state != PlaybackState.IDLE) {
-                            if (isPlaying || isBuffering) {
-                                viewModel.pauseSong()
-                            } else {
-                                viewModel.playSong()
-                            }
-                        }
-                    },
-                    onForward = {
-                        val state = controllerUiState.playbackState
-                        if (state != null && state != PlaybackState.IDLE) {
-                            viewModel.beforeSong()
-                        }
-                    },
-                    onBackward = {
-                        val state = controllerUiState.playbackState
-                        if (state != null && state != PlaybackState.IDLE) {
-                            viewModel.nextSong()
-                        }
-                    },
-                    onHidden = {
-                        viewModel.setControllerShow(false)
-                    },
-                    onFavourite = { trackId, isFavourite ->
-                        val state = controllerUiState.playbackState
-                        if (state != null && state != PlaybackState.IDLE) {
-                            if (isFavourite) {
-                                viewModel.removeTrackToCollection(trackId)
-                            } else {
-                                viewModel.addTrackToCollection(trackId)
-                            }
-                        }
-
-                    }
-                )
-            }
-        } else {
-            PulsingMusicButton(
-                modifier = Modifier
-                    .offset {
-                        IntOffset(
-                            floatButtonOffset.x.roundToInt(),
-                            floatButtonOffset.y.roundToInt()
-                        )
-                    }
-                    .onGloballyPositioned { layout ->
-                        if (!isInit) {
-                            isInit = true
-                            floatButtonOriginOffset = layout.positionInParent()
-                        }
-                    }
-                    .onSizeChanged { floatButtonSize = it }
-                    .pointerInput(Unit) {
-                        detectDragGesturesAfterLongPress(
-                            onDragStart = {
-                                // 可以在这里加震动反馈
+                            .clickable(
+                                indication = null,
+                                interactionSource = remember { MutableInteractionSource() }
+                            ) {}
+                    ) {
+                        val content = createRef()
+                        MusicController(
+                            currentSong = currentSong,
+                            isIdle = isPlayerIdle,
+                            isPlaying = isPlaying,
+                            isFavourite = { id -> favouriteTracks.contains(id) },
+                            isBuffering = isBuffering,
+                            sliderEnabled = !isPlayerIdle,
+                            progress = controllerUiState.currentProgress,
+                            totalProgress = controllerUiState.totalProgress,
+                            sliderValueRange = 0f..controllerUiState.totalProgress.coerceAtLeast(0f),
+                            modifier = Modifier
+                                .constrainAs(content) {
+                                    top.linkTo(parent.top, 30.dp)
+                                    bottom.linkTo(parent.bottom, 15.dp)
+                                    start.linkTo(parent.start)
+                                    end.linkTo(parent.end)
+                                }
+                                .padding(horizontal = 40.dp),
+                            onSliderValueChanged = { value ->
+                                viewModel.setDragProgress(value)
                             },
-                            onDrag = { change, dragAmount ->
-                                change.consume() // 消费事件，防止传递给父容器
+                            onSliderValueChangedFinish = {
+                                viewModel.setDragProgress(null)
+                            },
+                            onPlayOrPause = {
+                                val state = controllerUiState.playbackState
+                                if (state != null && state != PlaybackState.IDLE) {
+                                    if (isPlaying || isBuffering) {
+                                        viewModel.pauseSong()
+                                    } else {
+                                        viewModel.playSong()
+                                    }
+                                }
+                            },
+                            onForward = {
+                                val state = controllerUiState.playbackState
+                                if (state != null && state != PlaybackState.IDLE) {
+                                    viewModel.beforeSong()
+                                }
+                            },
+                            onBackward = {
+                                val state = controllerUiState.playbackState
+                                if (state != null && state != PlaybackState.IDLE) {
+                                    viewModel.nextSong()
+                                }
+                            },
+                            onHidden = {
+                                viewModel.setControllerShow(false)
+                            },
+                            onFavourite = { trackId, isFavourite ->
+                                val state = controllerUiState.playbackState
+                                if (state != null && state != PlaybackState.IDLE) {
+                                    if (isFavourite) {
+                                        viewModel.removeTrackToCollection(trackId)
+                                    } else {
+                                        viewModel.addTrackToCollection(trackId)
+                                    }
+                                }
 
-                                val newX = (floatButtonOffset.x + dragAmount.x).coerceIn(
-                                    minimumValue = -floatButtonOriginOffset.x,
-                                    maximumValue = parentSize.width.toFloat() - floatButtonSize.width - floatButtonOriginOffset.x
-                                )
-                                val newY = (floatButtonOffset.y + dragAmount.y).coerceIn(
-                                    minimumValue = -floatButtonOriginOffset.y,
-                                    maximumValue = parentSize.height.toFloat() - floatButtonSize.height - floatButtonOriginOffset.y
-                                )
-
-                                floatButtonOffset = Offset(newX, newY)
                             }
                         )
                     }
-                    .constrainAs(floatButton) {
-                        end.linkTo(parent.end, 50.dp)
-                        bottom.linkTo(parent.bottom, 50.dp)
-                    },
-                isPlaying = isPlaying,
-                isBuffering = isBuffering,
-                onClick = {
-                    viewModel.setControllerShow(true)
-                }
-            )
-        }
+                } else {
+                    PulsingMusicButton(
+                        modifier = Modifier
+                            .offset {
+                                IntOffset(
+                                    floatButtonOffset.x.roundToInt(),
+                                    floatButtonOffset.y.roundToInt()
+                                )
+                            }
+                            .onGloballyPositioned { layout ->
+                                if (!isInit) {
+                                    isInit = true
+                                    floatButtonOriginOffset = layout.positionInParent()
+                                }
+                            }
+                            .onSizeChanged { floatButtonSize = it }
+                            .pointerInput(Unit) {
+                                detectDragGesturesAfterLongPress(
+                                    onDragStart = {
+                                        // 可以在这里加震动反馈
+                                    },
+                                    onDrag = { change, dragAmount ->
+                                        change.consume() // 消费事件，防止传递给父容器
 
-    }
+                                        val newX = (floatButtonOffset.x + dragAmount.x).coerceIn(
+                                            minimumValue = -floatButtonOriginOffset.x,
+                                            maximumValue = parentSize.width.toFloat() - floatButtonSize.width - floatButtonOriginOffset.x
+                                        )
+                                        val newY = (floatButtonOffset.y + dragAmount.y).coerceIn(
+                                            minimumValue = -floatButtonOriginOffset.y,
+                                            maximumValue = parentSize.height.toFloat() - floatButtonSize.height - floatButtonOriginOffset.y
+                                        )
+
+                                        floatButtonOffset = Offset(newX, newY)
+                                    }
+                                )
+                            }
+                            .constrainAs(floatButton) {
+                                end.linkTo(parent.end, 50.dp)
+                                bottom.linkTo(parent.bottom, 50.dp)
+                            },
+                        isPlaying = isPlaying,
+                        isBuffering = isBuffering,
+                        onClick = {
+                            viewModel.setControllerShow(true)
+                        }
+                    )
+                }
+            }
+        },
+        slideBarContent = {
+            when (val type = panelState.dataType) {
+                DataType.PLAY_LIST, DataType.ALBUM -> {
+                    OptionSlideBarContent(
+                        isTrack = false,
+                        data = panelState.songList,
+                        isFavourite = { id ->
+                            if (type == DataType.PLAY_LIST) {
+                                favouritePlaylists.contains(id)
+                            } else {
+                                favouriteAlbums.contains(id)
+                            }
+                        },
+                        onPlayNow = { songList ->
+                            songList?.apply {
+                                val list = panelState.lazyList?.itemSnapshotList?.items
+                                if (list.isNullOrEmpty()) return@apply
+                                if (songList.id == currentListId) {
+                                    ToastUtils.show("已正在播放")
+                                    return@apply
+                                }
+                                viewModel.closePanel()
+                                ToastUtils.show("播放成功")
+                                // 播放
+                                viewModel.setCurrentListId(songList.id)
+                                viewModel.setCurrentSongList(
+                                    songList.id,
+                                    list.subList(
+                                        0,
+                                        10.coerceAtMost(list.size)
+                                    )
+                                )
+                                viewModel.loadAndPlaySong(0, list[0])
+                                viewModel.setControllerShow(true)
+                            }
+                        },
+                        onPlayNext = { songList ->
+                            songList?.apply {
+                                val list = panelState.lazyList?.itemSnapshotList?.items
+                                if (list.isNullOrEmpty()) return@apply
+                                if (songList.id == currentListId) {
+                                    ToastUtils.show("正在播放或已设置成功")
+                                    return@apply
+                                }
+                                viewModel.closePanel()
+                                ToastUtils.show("设置成功")
+                                // 添加
+                                viewModel.setCurrentListId(songList.id)
+                                viewModel.setCurrentSongList(
+                                    songList.id,
+                                    list.subList(
+                                        0,
+                                        10.coerceAtMost(list.size)
+                                    )
+                                )
+                                viewModel.playToNext(0, list[0])
+                            }
+                        },
+                        onAddToQueue = { songList ->
+                            songList?.apply {
+                                val list = panelState.lazyList?.itemSnapshotList?.items
+                                if (list.isNullOrEmpty()) return@apply
+                                if (songList.id == currentListId) {
+                                    ToastUtils.show("正在播放或已添加成功")
+                                    return@apply
+                                }
+                                viewModel.closePanel()
+                                ToastUtils.show("添加成功")
+                                // 添加
+                                viewModel.setCurrentListId(songList.id, false)
+                                viewModel.setCurrentSongList(
+                                    songList.id,
+                                    list.subList(
+                                        0,
+                                        10.coerceAtMost(list.size)
+                                    )
+                                )
+                            }
+                        },
+                        onAddOrRemoveToMyCollection = { songList, isFavourite ->
+                            songList?.apply {
+                                if (!isFavourite) {
+                                    if (type == DataType.PLAY_LIST) {
+                                        viewModel.addPlaylistToCollection(songList.id)
+                                    } else {
+                                        viewModel.addAlbumToCollection(songList.id)
+                                    }
+                                    ToastUtils.show("收藏成功")
+                                } else {
+                                    if (type == DataType.PLAY_LIST) {
+                                        viewModel.removePlaylistToCollection(songList.id)
+                                    } else {
+                                        viewModel.removeAlbumToCollection(songList.id)
+                                    }
+                                    ToastUtils.show("取消收藏成功")
+                                }
+                                viewModel.closePanel()
+                            }
+                        }
+
+                    )
+                }
+
+                DataType.TRACK -> {
+                    OptionSlideBarContent(
+                        isTrack = true,
+                        data = panelState.singleSong,
+                        isFavourite = { id ->
+                            favouriteTracks.contains(id)
+                        },
+                        onPlayNow = { singleSong ->
+                            singleSong?.apply {
+                                ToastUtils.show("播放成功")
+                                // 播放
+                                val song = singleSong as SingleSong
+                                viewModel.setCurrentListId(song.id)
+                                viewModel.setCurrentSongList(
+                                    song.id,
+                                    listOf(song)
+                                )
+                                viewModel.loadAndPlaySong(0, song)
+                                viewModel.setControllerShow(true)
+                            }
+                        },
+                        onPlayNext = { singleSong ->
+                            singleSong?.apply {
+                                val song = singleSong as SingleSong
+                                if (song.id == currentListId) {
+                                    ToastUtils.show("正在播放或已设置成功")
+                                    return@apply
+                                }
+                                viewModel.closePanel()
+                                ToastUtils.show("设置成功")
+                                // 添加
+                                viewModel.setCurrentListId(song.id)
+                                viewModel.setCurrentSongList(
+                                    song.id,
+                                    listOf(song)
+                                )
+                                viewModel.playToNext(0, song)
+                            }
+                        },
+                        onAddToQueue = { singleSong ->
+                            singleSong?.apply {
+                                val song = singleSong as SingleSong
+                                if (song.id == currentListId) {
+                                    ToastUtils.show("正在播放或已添加成功")
+                                    return@apply
+                                }
+                                viewModel.closePanel()
+                                ToastUtils.show("添加成功")
+                                // 添加
+                                viewModel.setCurrentListId(song.id, false)
+                                viewModel.setCurrentSongList(
+                                    song.id,
+                                    listOf(song)
+                                )
+                            }
+                        },
+                        onAddOrRemoveToMyCollection = { singleSong, isFavourite ->
+                            singleSong?.apply {
+                                if (!isFavourite) {
+                                    viewModel.addTrackToCollection(id)
+                                    ToastUtils.show("收藏成功")
+                                } else {
+                                    viewModel.removeTrackToCollection(id)
+                                    ToastUtils.show("取消收藏成功")
+                                }
+                                viewModel.closePanel()
+                            }
+                        },
+                        onAddToMyPlaylist = { singleSong ->
+                            singleSong?.apply {
+                                // 再次打开面板
+                                viewModel.closePanel()
+                                viewModel.openPanel(
+                                    singleSong = singleSong as SingleSong,
+                                    dataType = DataType.MY_PLAY_LIST
+                                )
+                            }
+                        },
+                        onViewArtist = { singleSong ->
+                            singleSong?.apply {
+                                val song = singleSong as SingleSong
+                                val artist = if (song.artists.isNotEmpty()) song.artists[0] else null
+                                if (artist != null) {
+                                    viewModel.closePanel()
+                                    val route = TidalRoute.getPlaylistAlbumListRoute(
+                                        artistId = artist.id,
+                                        title = artist.name,
+                                        dataType = DataType.ALBUM
+                                    )
+                                    navController.navigate(route)
+                                }
+                            }
+                        },
+                        onViewAlbum = { singleSong ->
+                            singleSong?.apply {
+                                val song = singleSong as SingleSong
+                                val album = song.album
+                                if (album != null) {
+                                    viewModel.closePanel()
+                                    if (album.id == panelState.songList?.id) {
+                                        ToastUtils.show("已在当前专辑")
+                                        return@apply
+                                    }
+                                    val route = TidalRoute.getItemTrackListRoute(
+                                        listId = album.id,
+                                        dataType = DataType.ALBUM,
+                                        coverUrl = if (album.coverArts.isNotEmpty()) album.coverArts[0].url else null,
+                                        title = album.title,
+                                        description = if (album.artists.isNotEmpty()) album.artists[0].name else ""
+                                    )
+                                    navController.navigate(route)
+                                }
+                            }
+                        }
+                    )
+                }
+
+                DataType.MY_PLAY_LIST -> {
+
+                }
+
+                else -> {}
+            }
+        }
+    )
+
 }
 
 @Preview
 @Composable
 private fun MusicController(
     modifier: Modifier = Modifier,
-    currentSong: SingleSong = SingleSong(),
+    currentSong: SingleSong? = null,
     isIdle: Boolean = true,
     isPlaying: Boolean = false,
     isFavourite: (String) -> Boolean = { false },
@@ -452,7 +703,7 @@ private fun MusicController(
                 .padding(horizontal = 10.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            if (!isIdle) {
+            if (!isIdle && currentSong != null) {
                 AsyncImage(
                     model = currentSong.coverUrl,
                     contentDescription = null,
@@ -511,7 +762,7 @@ private fun MusicController(
                     .wrapContentHeight()
             ) {
                 Text(
-                    text = if (isIdle) "TIDAL" else currentSong.getDetailTitle(),
+                    text = if (isIdle || currentSong == null) "TIDAL" else currentSong.getDetailTitle(),
                     color = Color.White,
                     fontWeight = FontWeight(600),
                     style = TextStyle(
@@ -525,7 +776,7 @@ private fun MusicController(
                 )
                 Spacer(modifier = Modifier.size(5.dp))
                 Text(
-                    text = if (isIdle) "Select a track to play" else currentSong.description
+                    text = if (isIdle || currentSong == null) "Select a track to play" else currentSong.description
                         ?: "No description",
                     color = Color(0xffA0A0A0),
                     fontWeight = FontWeight(500),
@@ -580,13 +831,15 @@ private fun MusicController(
             )
             Controller(
                 isPlaying = isPlaying,
-                isFavourite = isFavourite.invoke(currentSong.id),
+                isFavourite = isFavourite.invoke(currentSong?.id ?: ""),
                 isBuffering = isBuffering,
                 onPlayOrPause = onPlayOrPause,
                 onForward = onForward,
                 onBackward = onBackward,
                 onFavourite = {
-                    onFavourite.invoke(currentSong.id, isFavourite.invoke(currentSong.id))
+                    currentSong?.apply {
+                        onFavourite.invoke(id, isFavourite.invoke(id))
+                    }
                 }
             )
             Spacer(

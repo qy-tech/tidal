@@ -185,7 +185,9 @@ private fun ListContent(
                         )
                     ),
                     fontSize = 30.sp,
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .weight(1f),
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )

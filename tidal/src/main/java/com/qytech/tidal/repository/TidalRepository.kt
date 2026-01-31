@@ -58,9 +58,12 @@ class TidalRepository @Inject constructor(
 ) {
     private val _collectionTrackIds = MutableStateFlow<Set<String>>(emptySet())
     val collectionTrackIds = _collectionTrackIds.asStateFlow()
-    private var collectionAlbumIds: List<String> = emptyList()
-    private var collectionArtistIds: List<String> = emptyList()
-    private var collectionPlaylistIds: List<String> = emptyList()
+    private var _collectionAlbumIds = MutableStateFlow<Set<String>>(emptySet())
+    val collectionAlbumIds = _collectionAlbumIds.asStateFlow()
+    private var _collectionArtistIds = MutableStateFlow<Set<String>>(emptySet())
+    val collectionArtistIds = _collectionArtistIds.asStateFlow()
+    private var _collectionPlaylistIds = MutableStateFlow<Set<String>>(emptySet())
+    val collectionPlaylistIds = _collectionPlaylistIds.asStateFlow()
 
     private val repositoryScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
 
@@ -68,9 +71,9 @@ class TidalRepository @Inject constructor(
         repositoryScope.launch {
             store.tidalStoreData.collect { data ->
                 _collectionTrackIds.update { data.collectionTrackIds.toSet() }
-                collectionAlbumIds = data.collectionAlbumIds
-                collectionArtistIds = data.collectArtistIds
-                collectionPlaylistIds = data.collectionPlaylistIds
+                _collectionAlbumIds.update { data.collectionAlbumIds.toSet() }
+                _collectionArtistIds.update { data.collectArtistIds.toSet() }
+                _collectionPlaylistIds.update { data.collectionPlaylistIds.toSet() }
             }
         }
     }
@@ -96,11 +99,11 @@ class TidalRepository @Inject constructor(
     }
 
     private fun addAlbumIdsToCollection(albumIds: List<String>) {
-        updateCollectionAlbumIds(albumIds.union(collectionAlbumIds).toList())
+        updateCollectionAlbumIds(albumIds.union(_collectionAlbumIds.value).toList())
     }
 
     private fun removeAlbumIdsFromCollection(albumIds: List<String>) {
-        updateCollectionAlbumIds(collectionAlbumIds - albumIds)
+        updateCollectionAlbumIds(_collectionAlbumIds.value.toList() - albumIds.toSet())
     }
 
     private fun updateCollectionArtistIds(artistIds: List<String>) {
@@ -110,11 +113,11 @@ class TidalRepository @Inject constructor(
     }
 
     private fun addArtistIdsToCollection(artistIds: List<String>) {
-        updateCollectionArtistIds(artistIds.union(collectionArtistIds).toList())
+        updateCollectionArtistIds(artistIds.union(_collectionArtistIds.value).toList())
     }
 
     private fun removeArtistIdsFromCollection(artistIds: List<String>) {
-        updateCollectionArtistIds(collectionArtistIds - artistIds)
+        updateCollectionArtistIds(_collectionArtistIds.value.toList() - artistIds.toSet())
     }
 
     private fun updateCollectionPlaylistIds(playlistIds: List<String>) {
@@ -124,11 +127,11 @@ class TidalRepository @Inject constructor(
     }
 
     private fun addPlaylistIdsToCollection(playlistIds: List<String>) {
-        updateCollectionPlaylistIds(playlistIds.union(collectionPlaylistIds).toList())
+        updateCollectionPlaylistIds(playlistIds.union(_collectionPlaylistIds.value).toList())
     }
 
     private fun removePlaylistIdsFromCollection(playlistIds: List<String>) {
-        updateCollectionPlaylistIds(collectionPlaylistIds - playlistIds)
+        updateCollectionPlaylistIds(_collectionPlaylistIds.value.toList() - playlistIds.toSet())
     }
 
     /**
@@ -319,7 +322,7 @@ class TidalRepository @Inject constructor(
     /**
      * 收藏专辑
      */
-    fun addAlbumsToCollection(userId: String, albumIds: List<String>): Flow<Unit> = flow {
+    suspend fun addAlbumsToCollection(userId: String, albumIds: List<String>) {
         api.addAlbumsToCollection(
             userId = userId,
             requestBody = CollectionRequest(
@@ -328,19 +331,17 @@ class TidalRepository @Inject constructor(
         )
 
         addAlbumIdsToCollection(albumIds)
-
-        emit(Unit)
-    }.flowOn(Dispatchers.IO).catch { throw it }
+    }
 
     /**
      * 检查专辑是否被收藏
      */
-    fun checkAlbumIsCollected(albumId: String): Boolean = collectionAlbumIds.contains(albumId)
+    fun checkAlbumIsCollected(albumId: String): Boolean = _collectionAlbumIds.value.contains(albumId)
 
     /**
      * 取消专辑收藏
      */
-    fun removeAlbumsFromCollection(userId: String, albumIds: List<String>): Flow<Unit> = flow {
+    suspend fun removeAlbumsFromCollection(userId: String, albumIds: List<String>) {
         api.removeAlbumsFromCollection(
             userId = userId,
             requestBody = CollectionRequest(
@@ -349,9 +350,7 @@ class TidalRepository @Inject constructor(
         )
 
         removeAlbumIdsFromCollection(albumIds)
-
-        emit(Unit)
-    }.flowOn(Dispatchers.IO).catch { throw it }
+    }
 
     /**
      * 获取收藏的歌单
@@ -384,7 +383,7 @@ class TidalRepository @Inject constructor(
     /**
      * 收藏歌单
      */
-    fun addPlaylistsToCollection(userId: String, playlistIds: List<String>): Flow<Unit> = flow {
+    suspend fun addPlaylistsToCollection(userId: String, playlistIds: List<String>) {
         api.addPlaylistsToCollection(
             userId = userId,
             requestBody = CollectionRequest(
@@ -398,37 +397,32 @@ class TidalRepository @Inject constructor(
         )
 
         addPlaylistIdsToCollection(playlistIds)
-
-        emit(Unit)
-    }.flowOn(Dispatchers.IO).catch { throw it }
+    }
 
     /**
      * 检查歌单是否被收藏
      */
     fun checkPlaylistIsCollected(playlistId: String): Boolean =
-        collectionPlaylistIds.contains(playlistId)
+        _collectionPlaylistIds.value.contains(playlistId)
 
     /**
      * 取消歌单收藏
      */
-    fun removePlaylistsFromCollection(userId: String, playlistIds: List<String>): Flow<Unit> =
-        flow {
-            api.removePlaylistsFromCollection(
-                userId = userId,
-                requestBody = CollectionRequest(
-                    playlistIds.map {
-                        MinimalistResources(
-                            id = it,
-                            type = ResourceType.PLAYLIST.type
-                        )
-                    }
-                )
+    suspend fun removePlaylistsFromCollection(userId: String, playlistIds: List<String>) {
+        api.removePlaylistsFromCollection(
+            userId = userId,
+            requestBody = CollectionRequest(
+                playlistIds.map {
+                    MinimalistResources(
+                        id = it,
+                        type = ResourceType.PLAYLIST.type
+                    )
+                }
             )
+        )
 
-            removePlaylistIdsFromCollection(playlistIds)
-
-            emit(Unit)
-        }.flowOn(Dispatchers.IO).catch { throw it }
+        removePlaylistIdsFromCollection(playlistIds)
+    }
 
     /**
      * 获取收藏的单曲
@@ -507,7 +501,7 @@ class TidalRepository @Inject constructor(
     /**
      * 收藏艺术家
      */
-    fun addArtistsToCollection(userId: String, artistIds: List<String>): Flow<Unit> = flow {
+    suspend fun addArtistsToCollection(userId: String, artistIds: List<String>) {
         api.addArtistsToCollection(
             userId = userId,
             requestBody = CollectionRequest(
@@ -516,19 +510,17 @@ class TidalRepository @Inject constructor(
         )
 
         addArtistIdsToCollection(artistIds)
-
-        emit(Unit)
-    }.flowOn(Dispatchers.IO).catch { throw it }
+    }
 
     /**
      * 检查艺术家是否被收藏
      */
-    fun checkArtistIsCollected(artistId: String): Boolean = collectionArtistIds.contains(artistId)
+    fun checkArtistIsCollected(artistId: String): Boolean = _collectionArtistIds.value.contains(artistId)
 
     /**
      * 取消艺术家收藏
      */
-    fun removeArtistsFromCollection(userId: String, artistIds: List<String>): Flow<Unit> = flow {
+    suspend fun removeArtistsFromCollection(userId: String, artistIds: List<String>) {
         api.removeArtistsFromCollection(
             userId = userId,
             requestBody = CollectionRequest(
@@ -537,9 +529,7 @@ class TidalRepository @Inject constructor(
         )
 
         removeArtistIdsFromCollection(artistIds)
-
-        emit(Unit)
-    }.flowOn(Dispatchers.IO).catch { throw it }
+    }
 
     /**
      * 搜索专辑

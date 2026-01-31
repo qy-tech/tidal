@@ -30,10 +30,13 @@ class ControllerManager @Inject constructor(
     @param:ApplicationContext private val context: Context,
 ) {
 
-    val player: Player? = TidalService.getPlayerInstance(context)
+    private var player: Player? = null
     private val _currentArtistId = MutableStateFlow("")
     val currentArtistId = _currentArtistId.asStateFlow()
-    private val _currentListId = MutableStateFlow("")
+    private val defaultListId = "defaultListId"
+    private val defaultSongId = "defaultSongId"
+    private val defaultArtistId = "defaultArtistId"
+    private val _currentListId = MutableStateFlow(defaultListId)
     val currentListId = _currentListId.asStateFlow()
     private val _currentSongId = MutableStateFlow("")
     val currentSongId = _currentSongId.asStateFlow()
@@ -43,10 +46,14 @@ class ControllerManager @Inject constructor(
     private val _controllerUiState = MutableStateFlow(ControllerUiState())
     val controllerUiState = _controllerUiState.asStateFlow()
 
+    private var isInit = false
     private var eventCollectionJob: Job? = null
     private var itemPollingJob: Job? = null
 
-    init {
+    fun initController() {
+        if (isInit) return
+        isInit = true
+        player = TidalService.getPlayerInstance(context)
         eventCollectionJob = CoroutineScope(Dispatchers.IO + SupervisorJob()).launch {
             player?.playbackEngine?.events?.collect { value ->
                 when (value) {
@@ -105,30 +112,45 @@ class ControllerManager @Inject constructor(
                 delay(200)
             }
         }
-
-
     }
 
     fun clearIds() {
-        _currentListId.update { "" }
-        _currentSongId.update { "" }
-        _currentArtistId.update { "" }
+        _currentListId.update { defaultListId }
+        _currentSongId.update { defaultSongId }
+        _currentArtistId.update { defaultArtistId }
     }
 
-    fun setCurrentListId(listId: String) {
+    fun clearAll() {
+        clearIds()
+        currentSongIdSet = hashSetOf()
+        currentSongList = arrayListOf()
+        _controllerUiState.update { ControllerUiState() }
+        itemPollingJob?.cancel()
+        eventCollectionJob?.cancel()
+        player?.release()
+        player = null
+        isInit = false
+    }
+
+    fun setCurrentListId(listId: String, isClearBeforeData: Boolean = true) {
         if (_currentListId.value != listId) {
             _currentListId.update { listId }
-            currentSongIdSet = hashSetOf()
-            currentSongList = arrayListOf()
+            if (isClearBeforeData) {
+                currentSongIdSet = hashSetOf()
+                currentSongList = arrayListOf()
+            }
         }
     }
 
     fun setCurrentSongList(listId: String, songList: List<SingleSong>) {
-        if (_currentListId.value == listId) {
+        if (listId != defaultListId && _currentListId.value == listId) {
             songList.forEach {
                 if (currentSongIdSet.add(it.id)) {
                     currentSongList.add(it)
                 }
+            }
+            currentSongList.forEach {
+                Timber.d("curList: ${it.title}")
             }
         }
     }
@@ -210,6 +232,21 @@ class ControllerManager @Inject constructor(
                 nextSong = nextSong,
                 currentProduct = currentProduct,
                 beforeProduct = beforeProduct,
+                nextProduct = nextProduct
+            )
+        }
+    }
+
+    fun playToNext(index: Int, nextSong: SingleSong) {
+        val nextProduct = createMediaProduct(nextSong.id)
+        applyPlayer {
+            playbackEngine.setNext(nextProduct)
+        }
+        _controllerUiState.update {
+            it.copy(
+                currentIndex = index - 1,
+                beforeSong = null,
+                nextSong = nextSong,
                 nextProduct = nextProduct
             )
         }

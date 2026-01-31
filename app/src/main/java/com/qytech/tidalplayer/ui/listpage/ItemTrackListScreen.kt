@@ -1,5 +1,6 @@
 package com.qytech.tidalplayer.ui.listpage
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
@@ -19,6 +20,8 @@ import androidx.paging.compose.collectAsLazyPagingItems
 import com.qytech.tidalplayer.ui.listpage.components.HandlePagingError
 import com.qytech.tidalplayer.ui.listpage.components.SongListView
 import com.qytech.tidalplayer.ui.listpage.model.DataType
+import com.qytech.tidalplayer.ui.listpage.model.PanelData
+import com.qytech.tidalplayer.ui.listpage.model.SongList
 import com.qytech.tidalplayer.utils.popBackSafely
 import com.tidal.sdk.player.playbackengine.model.PlaybackState
 import kotlinx.coroutines.delay
@@ -31,7 +34,7 @@ fun ItemTrackListScreen(
     dataType: Int,
     coverUrl: String?,
     title: String,
-    description: String?,
+    description: String?
 ) {
     val viewModel: ListPageViewModel = hiltViewModel()
     val controllerUiState by viewModel.controllerUiState.collectAsState()
@@ -57,6 +60,11 @@ fun ItemTrackListScreen(
         }
     }.collectAsLazyPagingItems()
     val favouriteTracks by viewModel.collectionTrackIds.collectAsState()
+
+    val panelState by viewModel.panelState.collectAsState()
+    BackHandler(enabled = panelState.showPanel) {
+        viewModel.closePanel()
+    }
 
 
     LaunchedEffect(controllerUiState.playbackState) {
@@ -93,6 +101,7 @@ fun ItemTrackListScreen(
             title = title,
             description = description,
             daraList = pagingItem,
+            isCurrentListIdPlaying = currentListId == listId && isPlaying,
             currentSongId = currentSongId,
             isFavourite = { id -> favouriteTracks.contains(id) },
             onItemClick = { index, currentSong ->
@@ -131,6 +140,57 @@ fun ItemTrackListScreen(
                 } else {
                     viewModel.addTrackToCollection(id)
                 }
+            },
+            onPlaySequentially = {
+                val list = pagingItem.itemSnapshotList.items
+                if (list.isEmpty()) return@SongListView
+                if (currentListId == listId) {
+                    when {
+                        isPlaying -> {
+                            viewModel.pauseSong()
+                            return@SongListView
+                        }
+                        isPause -> {
+                            viewModel.playSong()
+                            return@SongListView
+                        }
+                        else -> {}
+                    }
+                }
+                viewModel.setCurrentListId(listId)
+                viewModel.setCurrentSongList(
+                    listId,
+                    list.subList(
+                        0,
+                        10.coerceAtMost(pagingItem.itemCount)
+                    )
+                )
+                viewModel.loadAndPlaySong(0, list[0])
+                viewModel.setControllerShow(true)
+            },
+            onOtherOption = {
+                viewModel.openPanel(
+                    dataType = DataType.entries.toTypedArray()[dataType],
+                    songList = SongList(
+                        id = listId,
+                        coverUrl = coverUrl,
+                        title = title,
+                        description = description
+                    ),
+                    lazyList = pagingItem
+                )
+            },
+            onItemOtherOption = { item ->
+                viewModel.openPanel(
+                    dataType = DataType.TRACK,
+                    singleSong = item,
+                    songList = SongList(
+                        id = listId,
+                        coverUrl = coverUrl,
+                        title = title,
+                        description = description
+                    ),
+                )
             }
         )
     }
