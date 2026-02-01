@@ -16,6 +16,8 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.vectorResource
+import androidx.compose.ui.text.PlatformTextStyle
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
@@ -36,11 +38,12 @@ fun TidalTracksCover(
     title: String = "TRACKS",
     icon: ImageVector = ImageVector.vectorResource(R.drawable.icon_music_solid_full)
 ) {
+    val evenRate = 1f / 280f // 280是默认大小
     Box(
         modifier = modifier
             .size(size)
             // 1. 圆角裁剪
-            .clip(RoundedCornerShape(16.dp))
+            .clip(RoundedCornerShape(Dp(size.value * evenRate * 16)))
             // 2. 核心渐变背景 (对应 CSS: linear-gradient(135deg, #004e92, #000428))
             .background(
                 brush = Brush.linearGradient(
@@ -56,8 +59,8 @@ fun TidalTracksCover(
             modifier = Modifier
                 .size(size * 0.7f) // 圆圈大小约为封面的 70%
                 .border(
-                    width = 2.dp,
-                    color = Color.White.copy(alpha = 0.05f), // 极淡的白色描边
+                    width = Dp((size.value * evenRate * 2).coerceAtLeast(2f)),
+                    color = Color.White.copy(alpha = 0.1f), // 极淡的白色描边
                     shape = CircleShape
                 )
         )
@@ -74,26 +77,36 @@ fun TidalTracksCover(
                 tint = TidalAccent.copy(alpha = 0.9f),
                 modifier = Modifier
                     .size(size * 0.22f) // 图标大小随封面缩放
-                    .padding(bottom = 12.dp)
+                    .padding(bottom = Dp(size.value * evenRate * 12))
             )
 
             // 副标题 (COLLECTION)
             Text(
                 text = subtitle.uppercase(),
                 color = Color.White.copy(alpha = 0.7f),
-                fontSize = (size.value * 0.05).sp, // 动态字号 14sp @ 280dp
+                fontSize = (size.value * evenRate * 14).sp, // 动态字号 14sp @ 280dp
                 fontWeight = FontWeight.Medium,
-                letterSpacing = 4.sp // 宽字间距
+                letterSpacing = (size.value * evenRate * 4).sp, // 宽字间距
+                style = TextStyle(
+                    platformStyle = PlatformTextStyle(
+                        includeFontPadding = false
+                    )
+                )
             )
             
             // 主标题 (TRACKS)
             Text(
                 text = title.uppercase(),
                 color = Color.White,
-                fontSize = (size.value * 0.12).sp, // 动态字号 32sp @ 280dp
+                fontSize = (size.value * evenRate * 32).sp, // 动态字号 32sp @ 280dp
                 fontWeight = FontWeight.Black, // 最粗字体
-                letterSpacing = 2.sp,
-                lineHeight = (size.value * 0.12).sp
+                letterSpacing = (size.value * evenRate * 2).sp,
+                lineHeight = (size.value * evenRate * 32).sp,
+                style = TextStyle(
+                    platformStyle = PlatformTextStyle(
+                        includeFontPadding = false
+                    )
+                )
             )
         }
     }
@@ -121,9 +134,9 @@ fun PreviewTidalCover() {
         // 2. 列表小图模式 (Quick Picks 列表用)
         // 只需要改 size，字体和图标会自动按比例缩小
         TidalTracksCover(
-            size = 70.dp,
-            subtitle = "MY",
-            title = "LIKED"
+            size = 65.dp,
+            subtitle = "MY COLLECTION",
+            title = "TRACKS"
         )
     }
 }

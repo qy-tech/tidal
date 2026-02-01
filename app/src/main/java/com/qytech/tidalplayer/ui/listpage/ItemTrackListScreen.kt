@@ -17,6 +17,7 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.navigation.NavController
 import androidx.paging.LoadState
 import androidx.paging.compose.collectAsLazyPagingItems
+import com.qytech.tidalplayer.ui.TidalRoute
 import com.qytech.tidalplayer.ui.listpage.components.HandlePagingError
 import com.qytech.tidalplayer.ui.listpage.components.SongListView
 import com.qytech.tidalplayer.ui.listpage.model.DataType
@@ -169,16 +170,30 @@ fun ItemTrackListScreen(
                 viewModel.setControllerShow(true)
             },
             onOtherOption = {
-                viewModel.openPanel(
-                    dataType = DataType.entries.toTypedArray()[dataType],
-                    songList = SongList(
-                        id = listId,
-                        coverUrl = coverUrl,
-                        title = title,
-                        description = description
-                    ),
-                    lazyList = pagingItem
-                )
+                val type = DataType.entries.toTypedArray()[dataType]
+                if (type == DataType.TRACK) {
+                    viewModel.openPanel(
+                        dataType = DataType.PLAY_LIST,
+                        songList = SongList(
+                            id = listId,
+                            coverUrl = TidalRoute.TRACK_LIST_ID,
+                            title = title,
+                            description = description
+                        ),
+                        lazyList = pagingItem
+                    )
+                } else {
+                    viewModel.openPanel(
+                        dataType = type,
+                        songList = SongList(
+                            id = listId,
+                            coverUrl = coverUrl,
+                            title = title,
+                            description = description
+                        ),
+                        lazyList = pagingItem
+                    )
+                }
             },
             onItemOtherOption = { item ->
                 viewModel.openPanel(

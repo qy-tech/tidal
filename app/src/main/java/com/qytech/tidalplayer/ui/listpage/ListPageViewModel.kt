@@ -805,7 +805,7 @@ class ListPageViewModel @Inject constructor(
         globalManager.openPanel(singleSong, dataType, songList, lazyList)
     }
 
-    fun open
+//    fun open
 
     fun closePanel() {
         globalManager.closePanel()

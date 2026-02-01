@@ -425,10 +425,10 @@ fun ListStartScreen(
                             songList?.apply {
                                 val list = panelState.lazyList?.itemSnapshotList?.items
                                 if (list.isNullOrEmpty()) return@apply
-                                if (songList.id == currentListId) {
-                                    ToastUtils.show("已正在播放")
-                                    return@apply
-                                }
+//                                if (songList.id == currentListId) {
+//                                    ToastUtils.show("已正在播放")
+//                                    return@apply
+//                                }
                                 viewModel.closePanel()
                                 ToastUtils.show("播放成功")
                                 // 播放

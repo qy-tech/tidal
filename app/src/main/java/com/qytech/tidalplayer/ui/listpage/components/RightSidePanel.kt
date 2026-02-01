@@ -19,13 +19,16 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
+import coil3.request.ImageRequest
 import com.qytech.tidalplayer.R
+import com.qytech.tidalplayer.ui.TidalRoute
 import com.qytech.tidalplayer.ui.listpage.model.ItemInfo
 import com.qytech.tidalplayer.ui.listpage.model.SingleSong
 import com.qytech.tidalplayer.ui.listpage.model.SongList
@@ -291,14 +294,31 @@ fun SlideBarHeader(
                 .fillMaxWidth()
                 .height(65.dp)
         ) {
-            AsyncImage(
-                model = coverUrl,
-                contentDescription = null,
-                modifier = Modifier
-                    .size(65.dp)
-                    .clip(shape = RoundedCornerShape(10.dp)),
-                contentScale = ContentScale.Crop
-            )
+            if (coverUrl.isNullOrBlank()) {
+                AsyncImage(
+                    model = ImageRequest.Builder(LocalContext.current)
+                        .data(R.drawable.default_playlist_cover_160x160)
+                        .build(),
+                    contentDescription = null,
+                    modifier = Modifier
+                        .size(65.dp)
+                        .clip(RoundedCornerShape(10.dp)),
+                    contentScale = ContentScale.Crop
+                )
+            } else if (coverUrl == TidalRoute.TRACK_LIST_ID) {
+                TidalTracksCover(
+                    size = 65.dp
+                )
+            } else {
+                AsyncImage(
+                    model = coverUrl,
+                    contentDescription = null,
+                    modifier = Modifier
+                        .size(65.dp)
+                        .clip(shape = RoundedCornerShape(10.dp)),
+                    contentScale = ContentScale.Crop
+                )
+            }
             Spacer(modifier = Modifier.size(20.dp))
             Column(
                 modifier = Modifier.fillMaxHeight(),
