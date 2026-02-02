@@ -1,16 +1,35 @@
 package com.qytech.tidalplayer.ui.listpage.components
 
-import androidx.compose.animation.*
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.wrapContentHeight
+import androidx.compose.foundation.layout.wrapContentWidth
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
-import androidx.compose.runtime.*
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -25,10 +44,13 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.paging.compose.collectAsLazyPagingItems
 import coil3.compose.AsyncImage
 import coil3.request.ImageRequest
 import com.qytech.tidalplayer.R
 import com.qytech.tidalplayer.ui.TidalRoute
+import com.qytech.tidalplayer.ui.listpage.ListPageViewModel
 import com.qytech.tidalplayer.ui.listpage.model.ItemInfo
 import com.qytech.tidalplayer.ui.listpage.model.SingleSong
 import com.qytech.tidalplayer.ui.listpage.model.SongList
@@ -47,7 +69,7 @@ fun RightSidePanel(
 //    }
 
     Box(modifier = Modifier.fillMaxSize()) {
-        
+
 //        Column(
 //            modifier = Modifier.fillMaxSize(),
 //            verticalArrangement = Arrangement.Center,
@@ -91,14 +113,14 @@ fun RightSidePanel(
             enter = slideInHorizontally(
                 initialOffsetX = { fullWidth -> fullWidth }, // fullWidth 是组件自身宽度
                 animationSpec = tween(durationMillis = 300)
-            ) ,
+            ),
             // 出场动画：水平滑出，目标位置偏移量为自身的宽度
             exit = slideOutHorizontally(
                 targetOffsetX = { fullWidth -> fullWidth },
                 animationSpec = tween(durationMillis = 300)
             ),
 
-        ) {
+            ) {
             // --- 侧边栏实际内容 ---
 //            Column(
 //                modifier = Modifier
@@ -145,11 +167,203 @@ fun RightSidePanel(
 @Composable
 fun MyPlaylistSlideBarContent(
     data: ItemInfo? = null,
+    createPlaylist: List<SongList> = emptyList(),
     onCreateNew: () -> Unit = {},
-    onItemClick: (ItemInfo?) -> Unit = {}
+    onItemClick: (ItemInfo?, SongList) -> Unit = { _, _ -> }
 ) {
 
+    val viewModel: ListPageViewModel = hiltViewModel()
+    val myPlaylistPagingData = viewModel.myPlaylistPagingData.collectAsLazyPagingItems()
+
+    Column(
+        modifier = Modifier
+            .fillMaxHeight()
+            .fillMaxWidth(0.4f)
+            .background(
+                color = Color(0xff121212)
+            ) // 背景色
+            .drawBehind {
+                drawLine(
+                    color = Color.White.copy(0.2f),
+                    start = Offset(0f, 0f),
+                    end = Offset(0f, size.height),
+                    strokeWidth = 2.dp.toPx()
+                )
+            }
+            .clickable(enabled = false) {} // 拦截点击事件，防止穿透到遮罩层
+    ) {
+
+        // 头部
+        Column(
+            modifier = Modifier.drawBehind {
+                drawLine(
+                    color = Color.White.copy(0.2f),
+                    start = Offset(0f, size.height),
+                    end = Offset(size.width, size.height),
+                    strokeWidth = 2.dp.toPx()
+                )
+            }
+        ) {
+            Spacer(modifier = Modifier.size(15.dp))
+
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .wrapContentHeight()
+                    .padding(horizontal = 15.dp),
+                horizontalArrangement = Arrangement.Center,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "Add To My Playlist",
+                    color = Color.White,
+                    fontWeight = FontWeight(600),
+                    fontSize = 18.sp
+                )
+                Spacer(modifier = Modifier.weight(1f))
+                Row(
+                    modifier = Modifier
+                        .wrapContentWidth()
+                        .height(35.dp)
+                        .background(
+                            color = Color.White.copy(alpha = 0.3f),
+                            shape = RoundedCornerShape(10.dp)
+                        )
+                        .clickable(
+                            onClick = onCreateNew
+                        )
+                        .padding(horizontal = 10.dp),
+                    horizontalArrangement = Arrangement.Center,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        imageVector = ImageVector.vectorResource(R.drawable.icon_plus_solid_full),
+                        contentDescription = null,
+                        tint = Color(0xff00e5ff),
+                        modifier = Modifier.size(20.dp)
+                    )
+                    Spacer(modifier = Modifier.size(5.dp))
+                    Text(
+                        text = "New Playlist",
+                        color = Color.White,
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight(500)
+                    )
+                    Spacer(modifier = Modifier.size(5.dp))
+                }
+            }
+
+            Spacer(modifier = Modifier.size(15.dp))
+        }
+
+        // 歌单
+        LazyColumn(
+            modifier = Modifier.padding(horizontal = 15.dp),
+            verticalArrangement = Arrangement.spacedBy(15.dp)
+        ) {
+            item {}
+
+            // 主要内容
+            items(
+                count = createPlaylist.size,
+                key = { index -> createPlaylist[index].id }
+            ) { index ->
+                val item = createPlaylist[index]
+                item.apply {
+                    val item = createPlaylist[index]
+                    item.apply {
+                        PlaylistItem(
+                            list = item,
+                            onItemClick = { list ->
+                                onItemClick.invoke(data, list)
+                            }
+                        )
+                    }
+                }
+
+            }
+
+            items(
+                count = myPlaylistPagingData.itemCount,
+                key = { index -> myPlaylistPagingData[index]?.id ?: "_${index}_" }
+            ) { index ->
+                val item = myPlaylistPagingData[index]
+                item?.apply {
+                    PlaylistItem(
+                        list = item,
+                        onItemClick = { list ->
+                            onItemClick.invoke(data, list)
+                        }
+                    )
+                }
+            }
+
+            item {}
+        }
+
+    }
 }
+
+@Composable
+private fun PlaylistItem(
+    list: SongList,
+    onItemClick: (SongList) -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .wrapContentHeight()
+            .clickable(
+                onClick = { onItemClick.invoke(list) }
+            ),
+        horizontalArrangement = Arrangement.Start,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        if (list.coverUrl.isNullOrBlank()) {
+            AsyncImage(
+                model = ImageRequest.Builder(LocalContext.current)
+                    .data(R.drawable.default_playlist_cover_160x160)
+                    .build(),
+                contentDescription = null,
+                modifier = Modifier
+                    .size(80.dp)
+                    .clip(
+                        shape = RoundedCornerShape(10.dp)
+                    ),
+                contentScale = ContentScale.Crop
+            )
+        } else {
+            AsyncImage(
+                model = list.coverUrl,
+                contentDescription = null,
+                modifier = Modifier
+                    .size(80.dp)
+                    .clip(shape = RoundedCornerShape(10.dp)),
+                contentScale = ContentScale.Crop
+            )
+        }
+        Spacer(modifier = Modifier.size(10.dp))
+        Column(
+            horizontalAlignment = Alignment.Start,
+            verticalArrangement = Arrangement.Center
+        ) {
+            Text(
+                text = list.title,
+                fontWeight = FontWeight(500),
+                color = Color.White,
+                fontSize = 22.sp
+            )
+            Spacer(modifier = Modifier.size(5.dp))
+            Text(
+                text = list.description ?: "",
+                fontWeight = FontWeight(500),
+                color = Color(0xffa0a0a0),
+                fontSize = 18.sp
+            )
+        }
+    }
+}
+
 @Composable
 fun OptionSlideBarContent(
     isTrack: Boolean = true,
@@ -158,7 +372,7 @@ fun OptionSlideBarContent(
     onPlayNow: (ItemInfo?) -> Unit = {},
     onPlayNext: (ItemInfo?) -> Unit = {},
     onAddToQueue: (ItemInfo?) -> Unit = {},
-    onAddOrRemoveToMyCollection: (ItemInfo?, Boolean) -> Unit = { _, _ ->},
+    onAddOrRemoveToMyCollection: (ItemInfo?, Boolean) -> Unit = { _, _ -> },
     onAddToMyPlaylist: (ItemInfo?) -> Unit = {},
     onViewArtist: (ItemInfo?) -> Unit = {},
     onViewAlbum: (ItemInfo?) -> Unit = {}
@@ -213,9 +427,22 @@ fun OptionSlideBarContent(
                 onClick = { onAddToQueue.invoke(itemInfo) }
             )
             SlideBarOption(
-                iconId = if (isFavourite.invoke(if (isTrack) singleSong?.id ?: "" else songList?.id ?: "")) R.drawable.icon_heart_solid_full else R.drawable.icon_heart_regular_full,
-                optionName = if (isFavourite.invoke(if (isTrack) singleSong?.id ?: "" else songList?.id ?: "")) "Remove from Collection" else "Add to My Collection" ,
-                onClick = { onAddOrRemoveToMyCollection.invoke(itemInfo, isFavourite.invoke(if (isTrack) singleSong?.id ?: "" else songList?.id ?: "")) }
+                iconId = if (isFavourite.invoke(
+                        if (isTrack) singleSong?.id ?: "" else songList?.id ?: ""
+                    )
+                ) R.drawable.icon_heart_solid_full else R.drawable.icon_heart_regular_full,
+                optionName = if (isFavourite.invoke(
+                        if (isTrack) singleSong?.id ?: "" else songList?.id ?: ""
+                    )
+                ) "Remove from Collection" else "Add to My Collection",
+                onClick = {
+                    onAddOrRemoveToMyCollection.invoke(
+                        itemInfo,
+                        isFavourite.invoke(
+                            if (isTrack) singleSong?.id ?: "" else songList?.id ?: ""
+                        )
+                    )
+                }
             )
             if (isTrack) {
                 SlideBarOption(
@@ -240,7 +467,7 @@ fun OptionSlideBarContent(
 
 @Composable
 fun SlideBarOption(
-    iconId: Int= R.drawable.icon_circle_play_solid_full,
+    iconId: Int = R.drawable.icon_circle_play_solid_full,
     optionName: String = "Play All Now",
     onClick: () -> Unit = {}
 ) {

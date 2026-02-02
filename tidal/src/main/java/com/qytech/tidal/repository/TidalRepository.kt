@@ -334,11 +334,6 @@ class TidalRepository @Inject constructor(
     }
 
     /**
-     * 检查专辑是否被收藏
-     */
-    fun checkAlbumIsCollected(albumId: String): Boolean = _collectionAlbumIds.value.contains(albumId)
-
-    /**
      * 取消专辑收藏
      */
     suspend fun removeAlbumsFromCollection(userId: String, albumIds: List<String>) {
@@ -398,12 +393,6 @@ class TidalRepository @Inject constructor(
 
         addPlaylistIdsToCollection(playlistIds)
     }
-
-    /**
-     * 检查歌单是否被收藏
-     */
-    fun checkPlaylistIsCollected(playlistId: String): Boolean =
-        _collectionPlaylistIds.value.contains(playlistId)
 
     /**
      * 取消歌单收藏
@@ -512,10 +501,6 @@ class TidalRepository @Inject constructor(
         addArtistIdsToCollection(artistIds)
     }
 
-    /**
-     * 检查艺术家是否被收藏
-     */
-    fun checkArtistIsCollected(artistId: String): Boolean = _collectionArtistIds.value.contains(artistId)
 
     /**
      * 取消艺术家收藏
@@ -696,24 +681,22 @@ class TidalRepository @Inject constructor(
     /**
      * 添加单曲到歌单
      */
-    fun addTracksToPlaylist(
+    suspend fun addTracksToPlaylist(
         playlistId: String,
         trackIds: List<String>,
-    ): Flow<Unit> = flow {
-        emit(
-            api.addTracksToPlaylist(
-                playlistId = playlistId,
-                requestBody = AddTracksToPlaylistRequest(
-                    data = trackIds.map {
-                        AddTracksToPlaylistData(
-                            type = ResourceType.TRACK.type,
-                            id = it
-                        )
-                    }
-                )
+    ) {
+        api.addTracksToPlaylist(
+            playlistId = playlistId,
+            requestBody = AddTracksToPlaylistRequest(
+                data = trackIds.map {
+                    AddTracksToPlaylistData(
+                        type = ResourceType.TRACK.type,
+                        id = it
+                    )
+                }
             )
         )
-    }.flowOn(Dispatchers.IO).catch { throw it }
+    }
 
     /**
      * 从歌单中删除单曲

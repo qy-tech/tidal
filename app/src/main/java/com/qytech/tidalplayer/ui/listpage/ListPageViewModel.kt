@@ -740,6 +740,20 @@ class ListPageViewModel @Inject constructor(
         return tidalCacheManager.getUserInfo()
     }
 
+    fun addTracksToPlaylist(playlistId: String, trackId: String) {
+        viewModelScope.launch(Dispatchers.IO) {
+            _showLoading.update { true }
+            try {
+                tidalRepository.addTracksToPlaylist(playlistId, listOf(trackId))
+
+                ToastUtils.show("添加成功")
+            } catch (e: Exception) {
+                ToastUtils.show("添加失败")
+            }
+            _showLoading.update { false }
+        }
+    }
+
     fun createPlaylist(name: String, description: String) {
         viewModelScope.launch(Dispatchers.IO) {
             _showLoading.update { true }

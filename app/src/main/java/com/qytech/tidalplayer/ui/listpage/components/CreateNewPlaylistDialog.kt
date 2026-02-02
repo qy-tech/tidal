@@ -46,10 +46,13 @@ import com.qytech.tidalplayer.utils.checkNameLegal
 
 @Composable
 fun CreateNewPlaylistDialog(
+    showState: Boolean = false,
     onDismiss: () -> Unit = {},
     onCancel: () -> Unit = {},
     onConfirm: (String, String) -> Unit = { _, _ -> }
 ) {
+    if (!showState) return
+
     Dialog(
         onDismissRequest = onDismiss,
         properties = DialogProperties(

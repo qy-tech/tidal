@@ -101,6 +101,12 @@ fun DiscoveryMixContent(
                 description = subItem.description ?: ""
             )
             navController.navigate(route)
+        },
+        onItemOtherOption = { singleSong ->
+            viewModel.openPanel(
+                dataType = DataType.TRACK,
+                singleSong = singleSong
+            )
         }
     )
 }
@@ -115,7 +121,8 @@ private fun DiscoveryMixList(
     onClick: (Int, SingleSong, String, pagingData: List<SingleSong>) -> Unit,
     onRefresh: () -> Unit = {},
     onFavourite: (String, Boolean) -> Unit,
-    onSeeAll: (SongList) -> Unit = {}
+    onSeeAll: (SongList) -> Unit = {},
+    onItemOtherOption: (SingleSong) -> Unit = {}
 ) {
     var loadingCount by remember { mutableStateOf(0) }
 
@@ -146,7 +153,8 @@ private fun DiscoveryMixList(
                         isLoading = { state ->
                             if (state) loadingCount++
                             else loadingCount--
-                        }
+                        },
+                        onItemOtherOption = onItemOtherOption
                     )
                 }
             }

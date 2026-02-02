@@ -75,7 +75,10 @@ import androidx.navigation.navArgument
 import coil3.compose.AsyncImage
 import com.qytech.tidalplayer.R
 import com.qytech.tidalplayer.ui.TidalRoute
+import com.qytech.tidalplayer.ui.listpage.components.CreateNewPlaylistDialog
 import com.qytech.tidalplayer.ui.listpage.components.CustomThinSlider
+import com.qytech.tidalplayer.ui.listpage.components.FullScreenLoading
+import com.qytech.tidalplayer.ui.listpage.components.MyPlaylistSlideBarContent
 import com.qytech.tidalplayer.ui.listpage.components.RightSidePanel
 import com.qytech.tidalplayer.ui.listpage.components.OptionSlideBarContent
 import com.qytech.tidalplayer.ui.listpage.model.ChannelType
@@ -132,6 +135,10 @@ fun ListStartScreen(
     val panelState by viewModel.panelState.collectAsState()
     // 当前播放
     val currentListId by viewModel.currentListId.collectAsState()
+    // 新建歌单
+    val showLoading by viewModel.showLoading.collectAsState()
+    var showCreateNewDialog by remember { mutableStateOf(false) }
+    val createPlaylist by viewModel.createPlaylist.collectAsState()
 
     BackHandler(enabled = panelState.showPanel) {
         viewModel.closePanel()
@@ -629,13 +636,41 @@ fun ListStartScreen(
                 }
 
                 DataType.MY_PLAY_LIST -> {
-
+                    MyPlaylistSlideBarContent(
+                        data = panelState.singleSong,
+                        createPlaylist = createPlaylist,
+                        onCreateNew = {
+                            showCreateNewDialog = true
+                        },
+                        onItemClick = { data, list ->
+                            data?.apply {
+                                viewModel.closePanel()
+                                viewModel.addTracksToPlaylist(list.id, data.id)
+                            }
+                        }
+                    )
                 }
 
                 else -> {}
             }
         }
     )
+
+    CreateNewPlaylistDialog(
+        showState = showCreateNewDialog,
+        onDismiss = {
+            showCreateNewDialog = false
+        },
+        onCancel = {
+            showCreateNewDialog = false
+        },
+        onConfirm = { name, description ->
+            showCreateNewDialog = false
+            viewModel.createPlaylist(name, description)
+        }
+    )
+
+    FullScreenLoading(showLoading)
 
 }
 

@@ -14,7 +14,7 @@ interface ItemInfo {
 data class SongList(
     override val id: String = "",
     override val title: String = "song list",
-    override val description: String? = "",
+    override val description: String? = "This is a description",
     override val coverUrl: String? = "https://resources.tidal.com/images/a3dc8eb8/5f0c/47e8/b5d8/07ed4e78d5f1/160x160.jpg",
     override val dataType: DataType = DataType.PLAY_LIST,
 ) : ItemInfo

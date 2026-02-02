@@ -413,20 +413,19 @@ fun UserInfoScreen(
         )
     }
 
-    if (showCreateNewDialog) {
-        CreateNewPlaylistDialog(
-            onDismiss = {
-                showCreateNewDialog = false
-            },
-            onCancel = {
-                showCreateNewDialog = false
-            },
-            onConfirm = { name, description ->
-                showCreateNewDialog = false
-                viewModel.createPlaylist(name, description)
-            }
-        )
-    }
+    CreateNewPlaylistDialog(
+        showState = showCreateNewDialog,
+        onDismiss = {
+            showCreateNewDialog = false
+        },
+        onCancel = {
+            showCreateNewDialog = false
+        },
+        onConfirm = { name, description ->
+            showCreateNewDialog = false
+            viewModel.createPlaylist(name, description)
+        }
+    )
 
     FullScreenLoading(showLoading)
 }

@@ -239,8 +239,11 @@ private fun TrackResult(
                             viewModel.addTrackToCollection(id)
                         }
                     },
-                    onOtherOption = {
-                        // todo
+                    onOtherOption = { singleSong ->
+                        viewModel.openPanel(
+                            dataType = DataType.TRACK,
+                            singleSong = singleSong
+                        )
                     }
                 )
             }

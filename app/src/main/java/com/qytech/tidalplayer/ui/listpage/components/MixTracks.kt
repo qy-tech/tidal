@@ -45,7 +45,8 @@ fun MixTracks(
     onRefresh: () -> Unit = {},
     onFavourite: (String, Boolean) -> Unit = { _, _ -> },
     onSeeAll: () -> Unit = {},
-    isLoading: (Boolean) -> Unit = {}
+    isLoading: (Boolean) -> Unit = {},
+    onItemOtherOption: (SingleSong) -> Unit = {}
 ) {
     val viewModel: ListPageViewModel = hiltViewModel()
     val dataList = remember {
@@ -129,9 +130,7 @@ fun MixTracks(
                         isFavourite = isFavourite.invoke(item.id),
                         onClick = { onClick.invoke(index, item, dataList.itemSnapshotList.items) },
                         onFavourite = onFavourite,
-                        onOtherOption = {
-                            // todo
-                        }
+                        onOtherOption = onItemOtherOption
                     )
                 }
             }

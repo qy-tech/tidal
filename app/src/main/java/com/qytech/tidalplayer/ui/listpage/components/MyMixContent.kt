@@ -148,6 +148,12 @@ private fun MyMixList(
                         isLoading = { state ->
                             if (state) loadingCount++
                             else loadingCount--
+                        },
+                        onItemOtherOption = { singleSong ->
+                            viewModel.openPanel(
+                                dataType = DataType.TRACK,
+                                singleSong = singleSong
+                            )
                         }
                     )
                 }
