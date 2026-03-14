@@ -36,6 +36,8 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -65,6 +67,7 @@ fun SearchScreen(
     val searchHistory by viewModel.searchHistory.collectAsState()
 //    val searchHistory = remember { listOf("asdasd", "564", "wqee21",
 //        "c4a4d6as45") }
+    val focusRequester = remember { FocusRequester() }
     var searchText by rememberSaveable { mutableStateOf("") }
     var showSearchResult by rememberSaveable { mutableStateOf(false) }
     val inputTextIs = remember { MutableInteractionSource() }
@@ -94,6 +97,7 @@ fun SearchScreen(
             Spacer(modifier = Modifier.size(20.dp))
             SearchBar(
                 searchText = searchText,
+                focusRequester = focusRequester,
                 inputTextIs = inputTextIs,
                 onValueChange = { newSearchText ->
                     searchText = newSearchText
@@ -108,6 +112,7 @@ fun SearchScreen(
                 },
                 onClear = {
                     searchText = ""
+                    focusRequester.requestFocus()
                 }
             )
             Spacer(modifier = Modifier.size(20.dp))
@@ -251,6 +256,7 @@ private fun HistoryChip(
 @Composable
 private fun SearchBar(
     searchText: String,
+    focusRequester: FocusRequester,
     inputTextIs: MutableInteractionSource,
     onValueChange: (String) -> Unit,
     onBack: () -> Unit = {},
@@ -276,6 +282,7 @@ private fun SearchBar(
         Spacer(modifier = Modifier.size(20.dp))
         SearchInput(
             modifier = Modifier.weight(1f),
+            focusRequester = focusRequester,
             inputTextIs = inputTextIs,
             currentValue = searchText,
             placeholder = "Search for playlist, or artists...",
@@ -320,6 +327,7 @@ private fun SearchBar(
 @Composable
 private fun SearchInput(
     modifier: Modifier = Modifier,
+    focusRequester: FocusRequester,
     inputTextIs: MutableInteractionSource,
     inputHeight: Dp = 65.dp,
     currentValue: String = "",
@@ -395,7 +403,9 @@ private fun SearchInput(
                         }
                         innerTextField()
                     }
-                }
+                },
+                modifier = Modifier
+                    .focusRequester(focusRequester)
             )
         }
 

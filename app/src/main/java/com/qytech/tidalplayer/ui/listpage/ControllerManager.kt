@@ -64,7 +64,7 @@ class ControllerManager @Inject constructor(
                         val currentProduct = _controllerUiState.value.nextProduct
                         if (value.mediaProduct.referenceId != _controllerUiState.value.currentProduct?.referenceId) {
                             if (currentSong != null && currentProduct != null) {
-                                updateControllerSong(currentIndex, currentSong, currentProduct, false)
+                                updateControllerMetadata(currentIndex, currentSong, currentProduct, false)
                             }
                         }
                     }
@@ -161,7 +161,7 @@ class ControllerManager @Inject constructor(
         }
     }
 
-    fun loadAndPlaySong(index: Int, song: SingleSong) {
+    fun loadAndPlay(index: Int, song: SingleSong) {
         val currentProduct = createMediaProduct(song.id)
 
         applyPlayer {
@@ -169,10 +169,10 @@ class ControllerManager @Inject constructor(
             playbackEngine.play()
         }
 
-        updateControllerSong(index, song, currentProduct)
+        updateControllerMetadata(index, song, currentProduct)
     }
 
-    private fun updateControllerSong(
+    private fun updateControllerMetadata(
         currentIndex: Int,
         currentSong: SingleSong,
         currentProduct: MediaProduct,
@@ -252,13 +252,13 @@ class ControllerManager @Inject constructor(
         }
     }
 
-    fun playSong() {
+    fun play() {
         applyPlayer {
             playbackEngine.play()
         }
     }
 
-    fun pauseSong() {
+    fun pause() {
         applyPlayer {
             Timber.d("pauseSong: asd")
             playbackEngine.pause()
@@ -272,24 +272,24 @@ class ControllerManager @Inject constructor(
             val nextProduct = createMediaProduct(nextSong.id)
             applyPlayer {
                 playbackEngine.load(nextProduct)
-                playSong()
+                play()
             }
-            updateControllerSong(nextIndex, nextSong, nextProduct, false)
+            updateControllerMetadata(nextIndex, nextSong, nextProduct, false)
         }
     }
 
-    fun beforeSong() {
-        val beforeSong = _controllerUiState.value.beforeSong
-        if (beforeSong != null) {
-            val beforeIndex = _controllerUiState.value.currentIndex - 1
-            val beforeProduct = createMediaProduct(beforeSong.id)
-            applyPlayer {
-                playbackEngine.load(beforeProduct)
-                playSong()
-            }
-            updateControllerSong(beforeIndex, beforeSong, beforeProduct, false)
+fun beforeSong() {
+    val beforeSong = _controllerUiState.value.beforeSong
+    if (beforeSong != null) {
+        val beforeIndex = _controllerUiState.value.currentIndex - 1
+        val beforeProduct = createMediaProduct(beforeSong.id)
+        applyPlayer {
+            playbackEngine.load(beforeProduct)
+            play()
         }
+        updateControllerMetadata(beforeIndex, beforeSong, beforeProduct, false)
     }
+}
 
     fun setControllerShow(show: Boolean) {
         _controllerUiState.update { it.copy(showController = show) }

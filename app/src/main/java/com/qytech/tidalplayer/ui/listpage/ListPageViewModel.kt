@@ -567,7 +567,7 @@ class ListPageViewModel @Inject constructor(
 
     fun loadAndPlaySong(index: Int, song: SingleSong) {
         Timber.d("songId: ${song}")
-        controllerManager.loadAndPlaySong(index, song)
+        controllerManager.loadAndPlay(index, song)
     }
 
     fun playToNext(index: Int, nextSong: SingleSong) {
@@ -575,11 +575,11 @@ class ListPageViewModel @Inject constructor(
     }
 
     fun playSong() {
-        controllerManager.playSong()
+        controllerManager.play()
     }
 
     fun pauseSong() {
-        controllerManager.pauseSong()
+        controllerManager.pause()
     }
 
     fun nextSong() {
