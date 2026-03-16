@@ -28,9 +28,9 @@ import androidx.paging.LoadState
 import androidx.paging.PagingData
 import androidx.paging.compose.collectAsLazyPagingItems
 import androidx.paging.compose.itemKey
-import com.qytech.tidalplayer.ui.listpage.ListPageViewModel
 import com.qytech.tidalplayer.ui.listpage.model.SingleSong
 import com.qytech.tidalplayer.ui.listpage.model.SongList
+import com.qytech.tidalplayer.vm.ListPageViewModel
 import kotlinx.coroutines.flow.Flow
 
 
@@ -54,8 +54,6 @@ fun MixTracks(
     }.collectAsLazyPagingItems()
 
     isLoading.invoke(dataList.loadState.refresh is LoadState.Loading)
-
-    HandlePagingError(dataList)
 
     LaunchedEffect(dataList.itemCount, subItem.id) {
         if (dataList.loadState.refresh is LoadState.NotLoading) {

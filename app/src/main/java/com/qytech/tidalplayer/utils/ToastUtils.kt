@@ -9,6 +9,8 @@ import android.view.LayoutInflater
 import android.widget.TextView
 import android.widget.Toast
 import com.qytech.tidalplayer.R
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.asSharedFlow
 
 @SuppressLint("StaticFieldLeak")
 object ToastUtils {
@@ -16,13 +18,21 @@ object ToastUtils {
     @Volatile
     private var toast: Toast? = null
 
+    private lateinit var context: Context
+
+    private val _toastFlow = MutableSharedFlow<String>()
+    val toastFlow = _toastFlow.asSharedFlow()
+
     fun init(appContext: Context) {
         // 强制使用 applicationContext，防止误传
         context = appContext.applicationContext
     }
 
-    private lateinit var context: Context
+    suspend fun showForFlow(message: String) {
+        _toastFlow.emit(message)
+    }
 
+    // todo 土豆丝闪烁就是因为自定义导致的，后续改用compose自定义吧
     @SuppressLint("StaticFieldLeak")
     fun show(
         message: String,

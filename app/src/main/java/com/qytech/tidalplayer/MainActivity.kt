@@ -16,6 +16,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import com.qytech.tidalplayer.ui.TidalScreen
+import com.qytech.tidalplayer.ui.listpage.components.HandleToastShow
 import com.qytech.tidalplayer.ui.theme.TidalPlayerTheme
 import dagger.hilt.android.AndroidEntryPoint
 
@@ -25,6 +26,9 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
+
+            HandleToastShow()
+
             TidalPlayerTheme {
                 Scaffold(
                     modifier = Modifier.fillMaxSize(),

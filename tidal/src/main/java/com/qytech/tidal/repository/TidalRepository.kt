@@ -8,6 +8,7 @@ import com.qytech.tidal.data.Artist
 import com.qytech.tidal.data.ArtistDetail
 import com.qytech.tidal.data.Playlist
 import com.qytech.tidal.data.ResourceType
+import com.qytech.tidal.data.Track
 import com.qytech.tidal.data.TrackDetail
 import com.qytech.tidal.data.UserInfo
 import com.qytech.tidal.data.model.AlbumResource
@@ -33,6 +34,9 @@ import com.qytech.tidal.data.request.CreatePlaylistData
 import com.qytech.tidal.data.request.CreatePlaylistRequest
 import com.qytech.tidal.data.request.RemoveTracksFromPlaylistData
 import com.qytech.tidal.data.request.RemoveTracksFromPlaylistRequest
+import com.qytech.tidal.base.PagingResponse
+import com.qytech.tidal.base.RepoResult
+import com.qytech.tidal.base.apiCall
 import com.qytech.tidal.data.response.toTrackDetailList
 import com.qytech.tidal.data.toCoverArtList
 import kotlinx.coroutines.CoroutineScope
@@ -183,11 +187,11 @@ class TidalRepository @Inject constructor(
     /**
      * 获取用户推荐-myMixes
      */
-    suspend fun getMyMixes(userId: String): List<Playlist> {
+    suspend fun getMyMixes(userId: String) = apiCall {
         val response = api.getMyMixes(userId)
         val includedData = response.included
         val artworks = includedData.filterIsInstance<ArtworkResource>()
-        return includedData.filterIsInstance<PlaylistResource>().map { playlist ->
+        val data = includedData.filterIsInstance<PlaylistResource>().map { playlist ->
             Playlist(
                 id = playlist.id,
                 name = playlist.attributes.name,
@@ -198,16 +202,18 @@ class TidalRepository @Inject constructor(
                     .toCoverArtList()
             )
         }.sortedBy { it.name }
+
+        PagingResponse(data, Pagination())
     }
 
     /**
      * 获取用户推荐-discoveryMixes
      */
-    suspend fun getDiscoveryMixes(userId: String): List<Playlist> {
+    suspend fun getDiscoveryMixes(userId: String) = apiCall {
         val response = api.getDiscoveryMixes(userId)
         val includedData = response.included
         val artworks = includedData.filterIsInstance<ArtworkResource>()
-        return includedData.filterIsInstance<PlaylistResource>().map { playlist ->
+        val data = includedData.filterIsInstance<PlaylistResource>().map { playlist ->
             Playlist(
                 id = playlist.id,
                 name = playlist.attributes.name,
@@ -218,16 +224,18 @@ class TidalRepository @Inject constructor(
                     .toCoverArtList()
             )
         }
+
+        PagingResponse(data, Pagination())
     }
 
     /**
      * 获取用户推荐-newArrivalMixes
      */
-    suspend fun getNewArrivalMixes(userId: String): List<Playlist> {
+    suspend fun getNewArrivalMixes(userId: String) = apiCall {
         val response = api.getNewArrivalMixes(userId)
         val includedData = response.included
         val artworks = includedData.filterIsInstance<ArtworkResource>()
-        return includedData.filterIsInstance<PlaylistResource>().map { playlist ->
+        val data = includedData.filterIsInstance<PlaylistResource>().map { playlist ->
             Playlist(
                 id = playlist.id,
                 name = playlist.attributes.name,
@@ -238,6 +246,8 @@ class TidalRepository @Inject constructor(
                     .toCoverArtList()
             )
         }
+
+        PagingResponse(data, Pagination())
     }
 
     /**
@@ -252,7 +262,7 @@ class TidalRepository @Inject constructor(
     /**
      * 获取歌单中的单曲
      */
-    suspend fun getPlaylistTracks(playlistId: String, pageCursor: String? = null): PlaylistTracks {
+    suspend fun getPlaylistTracks(playlistId: String, pageCursor: String? = null) = apiCall {
         val playlistItemsResponse =
             api.getPlaylistItems(playlistId = playlistId, pageCursor = pageCursor)
         val pagination = Pagination(nextCursor = playlistItemsResponse.links.meta?.nextCursor)
@@ -263,13 +273,10 @@ class TidalRepository @Inject constructor(
             track.copy(itemId = playlistItemsResponse.data.firstOrNull { it.id == track.trackInfo.id }?.meta?.itemId)
         }
 
-        return PlaylistTracks(
-            tracks = tracks,
-            pagination = pagination
-        )
+        PagingResponse(tracks, pagination)
     }
 
-    suspend fun getAlbumsTracks(albumId: String, pageCursor: String? = null): AlbumsTracks {
+    suspend fun getAlbumsTracks(albumId: String, pageCursor: String? = null) = apiCall {
         val response = api.getAlbumsItems(albumsId = albumId, pageCursor = pageCursor)
         val pagination = Pagination(nextCursor = response.links.meta?.nextCursor)
         val trackIds = response.data.map { it.id }
@@ -277,16 +284,13 @@ class TidalRepository @Inject constructor(
         val tracksResponse = api.getTracks(trackIds = trackIds)
         val tracks = tracksResponse.toTrackDetailList()
 
-        return AlbumsTracks(
-            tracks = tracks,
-            pagination = pagination
-        )
+        PagingResponse(tracks, pagination)
     }
 
     /**
      * 获取收藏的专辑
      */
-    suspend fun getCollectionAlbums(userId: String, pageCursor: String? = null): AlbumList {
+    suspend fun getCollectionAlbums(userId: String, pageCursor: String? = null) = apiCall {
         val response = api.getCollectionAlbums(userId = userId, pageCursor = pageCursor)
         val pagination = Pagination(nextCursor = response.links.meta?.nextCursor)
         val includedData = response.included!!
@@ -313,16 +317,13 @@ class TidalRepository @Inject constructor(
 
         addAlbumIdsToCollection(albums.map { it.id })
 
-        return AlbumList(
-            albums = albums,
-            pagination = pagination
-        )
+        PagingResponse(albums, pagination)
     }
 
     /**
      * 收藏专辑
      */
-    suspend fun addAlbumsToCollection(userId: String, albumIds: List<String>) {
+    suspend fun addAlbumsToCollection(userId: String, albumIds: List<String>) = apiCall {
         api.addAlbumsToCollection(
             userId = userId,
             requestBody = CollectionRequest(
@@ -336,7 +337,7 @@ class TidalRepository @Inject constructor(
     /**
      * 取消专辑收藏
      */
-    suspend fun removeAlbumsFromCollection(userId: String, albumIds: List<String>) {
+    suspend fun removeAlbumsFromCollection(userId: String, albumIds: List<String>) = apiCall {
         api.removeAlbumsFromCollection(
             userId = userId,
             requestBody = CollectionRequest(
@@ -350,7 +351,7 @@ class TidalRepository @Inject constructor(
     /**
      * 获取收藏的歌单
      */
-    suspend fun getCollectionPlaylists(userId: String, pageCursor: String? = null): PlaylistList {
+    suspend fun getCollectionPlaylists(userId: String, pageCursor: String? = null) = apiCall {
         val response = api.getCollectionPlaylists(userId = userId, pageCursor = pageCursor)
         val pagination = Pagination(nextCursor = response.links.meta?.nextCursor)
         val includedData = response.included!!
@@ -369,16 +370,13 @@ class TidalRepository @Inject constructor(
 
         addPlaylistIdsToCollection(playlists.map { it.id })
 
-        return PlaylistList(
-            playlists = playlists,
-            pagination = pagination
-        )
+        PagingResponse(playlists, pagination)
     }
 
     /**
      * 收藏歌单
      */
-    suspend fun addPlaylistsToCollection(userId: String, playlistIds: List<String>) {
+    suspend fun addPlaylistsToCollection(userId: String, playlistIds: List<String>) = apiCall {
         api.addPlaylistsToCollection(
             userId = userId,
             requestBody = CollectionRequest(
@@ -397,7 +395,7 @@ class TidalRepository @Inject constructor(
     /**
      * 取消歌单收藏
      */
-    suspend fun removePlaylistsFromCollection(userId: String, playlistIds: List<String>) {
+    suspend fun removePlaylistsFromCollection(userId: String, playlistIds: List<String>) = apiCall {
         api.removePlaylistsFromCollection(
             userId = userId,
             requestBody = CollectionRequest(
@@ -416,7 +414,7 @@ class TidalRepository @Inject constructor(
     /**
      * 获取收藏的单曲
      */
-    suspend fun getCollectionTracks(userId: String, pageCursor: String? = null): PlaylistTracks {
+    suspend fun getCollectionTracks(userId: String, pageCursor: String? = null) = apiCall {
         val collectionResponse =
             api.getCollectionTracks(userId = userId, pageCursor = pageCursor)
         val pagination = Pagination(nextCursor = collectionResponse.links.meta?.nextCursor)
@@ -427,16 +425,13 @@ class TidalRepository @Inject constructor(
 
         addTrackIdsToCollection(trackIds)
 
-        return PlaylistTracks(
-            tracks = tracks,
-            pagination = pagination
-        )
+        PagingResponse(tracks, pagination)
     }
 
     /**
      * 收藏单曲
      */
-    suspend fun addTracksToCollection(userId: String, trackIds: List<String>) {
+    suspend fun addTracksToCollection(userId: String, trackIds: List<String>) = apiCall {
         api.addTracksToCollection(
             userId = userId,
             requestBody = CollectionRequest(
@@ -449,7 +444,7 @@ class TidalRepository @Inject constructor(
     /**
      * 取消单曲收藏
      */
-    suspend fun removeTracksFromCollection(userId: String, trackIds: List<String>) {
+    suspend fun removeTracksFromCollection(userId: String, trackIds: List<String>) = apiCall {
         api.removeTracksFromCollection(
             userId = userId,
             requestBody = CollectionRequest(
@@ -463,7 +458,7 @@ class TidalRepository @Inject constructor(
     /**
      * 获取收藏的艺术家
      */
-    suspend fun getCollectionArtists(userId: String, pageCursor: String? = null): ArtistList {
+    suspend fun getCollectionArtists(userId: String, pageCursor: String? = null) = apiCall {
         val response = api.getCollectionArtists(userId = userId, pageCursor = pageCursor)
         val pagination = Pagination(nextCursor = response.links.meta?.nextCursor)
         val includedData = response.included!!
@@ -481,16 +476,13 @@ class TidalRepository @Inject constructor(
 
         addArtistIdsToCollection(artists.map { it.artistInfo.id })
 
-        return ArtistList(
-            artists = artists,
-            pagination = pagination
-        )
+        PagingResponse(artists, pagination)
     }
 
     /**
      * 收藏艺术家
      */
-    suspend fun addArtistsToCollection(userId: String, artistIds: List<String>) {
+    suspend fun addArtistsToCollection(userId: String, artistIds: List<String>) = apiCall {
         api.addArtistsToCollection(
             userId = userId,
             requestBody = CollectionRequest(
@@ -505,7 +497,7 @@ class TidalRepository @Inject constructor(
     /**
      * 取消艺术家收藏
      */
-    suspend fun removeArtistsFromCollection(userId: String, artistIds: List<String>) {
+    suspend fun removeArtistsFromCollection(userId: String, artistIds: List<String>) = apiCall {
         api.removeArtistsFromCollection(
             userId = userId,
             requestBody = CollectionRequest(
@@ -519,7 +511,7 @@ class TidalRepository @Inject constructor(
     /**
      * 搜索专辑
      */
-    suspend fun searchAlbums(query: String, pageCursor: String? = null): AlbumList {
+    suspend fun searchAlbums(query: String, pageCursor: String? = null) = apiCall {
         val response = api.searchAlbums(query = query, pageCursor = pageCursor)
         val pagination = Pagination(nextCursor = response.links.meta?.nextCursor)
         val includedData = response.included!!
@@ -543,16 +535,14 @@ class TidalRepository @Inject constructor(
                 artists = artists
             )
         }
-        return AlbumList(
-            albums = albums,
-            pagination = pagination
-        )
+
+        PagingResponse(albums, pagination)
     }
 
     /**
      * 搜索艺术家
      */
-    suspend fun searchArtists(query: String, pageCursor: String? = null): ArtistList{
+    suspend fun searchArtists(query: String, pageCursor: String? = null) = apiCall {
         val response = api.searchArtists(query = query, pageCursor = pageCursor)
         val pagination = Pagination(nextCursor = response.links.meta?.nextCursor)
         val includedData = response.included!!
@@ -567,16 +557,14 @@ class TidalRepository @Inject constructor(
                     .toCoverArtList()
             )
         }
-        return ArtistList(
-            artists = artists,
-            pagination = pagination
-        )
+
+        PagingResponse(artists, pagination)
     }
 
     /**
      * 搜索歌单
      */
-    suspend fun searchPlaylists(query: String, pageCursor: String? = null): PlaylistList {
+    suspend fun searchPlaylists(query: String, pageCursor: String? = null) = apiCall {
         val response = api.searchPlaylists(query = query, pageCursor = pageCursor)
 
         val pagination = Pagination(nextCursor = response.links.meta?.nextCursor)
@@ -593,32 +581,28 @@ class TidalRepository @Inject constructor(
                     .toCoverArtList()
             )
         }
-        return PlaylistList(
-            playlists = playlists,
-            pagination = pagination
-        )
+
+        PagingResponse(playlists, pagination)
     }
 
     /**
      * 搜索单曲
      */
-    suspend fun searchTracks(query: String, pageCursor: String? = null): PlaylistTracks {
+    suspend fun searchTracks(query: String, pageCursor: String? = null) = apiCall {
         val searchResponse = api.searchTracks(query = query, pageCursor = pageCursor)
         val pagination = Pagination(nextCursor = searchResponse.links.meta?.nextCursor)
         val trackIds = searchResponse.data.map { it.id }
 
         val tracksResponse = api.getTracks(trackIds = trackIds)
         val tracks = tracksResponse.toTrackDetailList()
-        return                 PlaylistTracks(
-            tracks = tracks,
-            pagination = pagination
-        )
+
+        PagingResponse(tracks, pagination)
     }
 
     /**
      * 获取用户的歌单
      */
-    suspend fun getUserPlaylists(userId: String, pageCursor: String? = null): PlaylistList {
+    suspend fun getUserPlaylists(userId: String, pageCursor: String? = null) = apiCall {
         val response = api.getUserPlaylists(userId = userId, pageCursor = pageCursor)
         val pagination = Pagination(nextCursor = response.links.meta?.nextCursor)
         val includedData = response.included
@@ -634,10 +618,8 @@ class TidalRepository @Inject constructor(
                     .toCoverArtList()
             )
         }
-        return PlaylistList(
-            playlists = playlists,
-            pagination = pagination
-        )
+
+        PagingResponse(playlists, pagination)
     }
 
     /**
@@ -646,7 +628,7 @@ class TidalRepository @Inject constructor(
     suspend fun createPlaylist(
         name: String,
         description: String = "",
-    ): Playlist {
+    ) = apiCall {
         val response = api.createPlaylist(
             requestBody = CreatePlaylistRequest(
                 CreatePlaylistData(
@@ -659,7 +641,8 @@ class TidalRepository @Inject constructor(
             )
         )
         val playlistData = response.data.attributes
-        return Playlist(
+
+        Playlist(
             id = response.data.id,
             name = playlistData.name,
             description = playlistData.description,
@@ -674,7 +657,7 @@ class TidalRepository @Inject constructor(
      */
     suspend fun deletePlaylist(
         playlistId: String,
-    ) {
+    ) = apiCall {
         api.deletePlaylist(playlistId = playlistId)
     }
 
@@ -684,7 +667,7 @@ class TidalRepository @Inject constructor(
     suspend fun addTracksToPlaylist(
         playlistId: String,
         trackIds: List<String>,
-    ) {
+    ) = apiCall {
         api.addTracksToPlaylist(
             playlistId = playlistId,
             requestBody = AddTracksToPlaylistRequest(
@@ -726,7 +709,7 @@ class TidalRepository @Inject constructor(
     /**
      * 获取艺术家的专辑
      */
-    suspend fun getArtistAlbums(artistId: String, pageCursor: String? = null): AlbumList {
+    suspend fun getArtistAlbums(artistId: String, pageCursor: String? = null) = apiCall {
         val response = api.getArtistAlbums(artistId = artistId, pageCursor = pageCursor)
         val pagination = Pagination(nextCursor = response.links.meta?.nextCursor)
         val includedData = response.included!!
@@ -750,10 +733,8 @@ class TidalRepository @Inject constructor(
                 artists = artists
             )
         }
-        return AlbumList(
-            albums = albums,
-            pagination = pagination
-        )
+
+        PagingResponse(albums, pagination)
     }
 
     /**

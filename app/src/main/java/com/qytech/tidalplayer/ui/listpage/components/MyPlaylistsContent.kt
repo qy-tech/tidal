@@ -47,8 +47,8 @@ import androidx.paging.compose.collectAsLazyPagingItems
 import coil3.compose.AsyncImage
 import com.qytech.tidalplayer.R
 import com.qytech.tidalplayer.ui.TidalRoute
-import com.qytech.tidalplayer.ui.listpage.ListPageViewModel
 import com.qytech.tidalplayer.ui.listpage.model.SongList
+import com.qytech.tidalplayer.vm.ListPageViewModel
 import com.tidal.sdk.player.playbackengine.model.PlaybackState
 
 @Composable
@@ -64,8 +64,6 @@ fun MyPlaylistContent(
             controllerUiState.playbackState == PlaybackState.PLAYING || controllerUiState.playbackState == PlaybackState.STALLED
         }
     }
-
-    HandlePagingError(pagingItem)
 
     Box(
         modifier = Modifier

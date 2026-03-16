@@ -18,12 +18,12 @@ import androidx.navigation.NavController
 import androidx.paging.LoadState
 import androidx.paging.compose.collectAsLazyPagingItems
 import com.qytech.tidalplayer.ui.TidalRoute
-import com.qytech.tidalplayer.ui.listpage.components.HandlePagingError
 import com.qytech.tidalplayer.ui.listpage.components.SongListView
 import com.qytech.tidalplayer.ui.listpage.model.DataType
 import com.qytech.tidalplayer.ui.listpage.model.PanelData
 import com.qytech.tidalplayer.ui.listpage.model.SongList
 import com.qytech.tidalplayer.utils.popBackSafely
+import com.qytech.tidalplayer.vm.ListPageViewModel
 import com.tidal.sdk.player.playbackengine.model.PlaybackState
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.emptyFlow
@@ -74,8 +74,6 @@ fun ItemTrackListScreen(
             viewModel.clearIds()
         }
     }
-
-    HandlePagingError(pagingItem)
 
     LaunchedEffect(pagingItem.itemCount, currentListId) {
         val refresh = pagingItem.loadState.refresh

@@ -13,8 +13,10 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.qytech.tidalplayer.ui.listpage.ListStartScreen
+import com.qytech.tidalplayer.ui.listpage.components.HandleToastShow
 import com.qytech.tidalplayer.ui.login.LoginStartScreen
 import com.qytech.tidalplayer.ui.login.LoginWebScreen
+import com.qytech.tidalplayer.vm.TidalViewModel
 
 @Composable
 fun TidalScreen(

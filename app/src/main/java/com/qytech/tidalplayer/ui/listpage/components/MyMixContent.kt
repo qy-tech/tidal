@@ -26,10 +26,10 @@ import androidx.paging.LoadState
 import androidx.paging.compose.LazyPagingItems
 import androidx.paging.compose.collectAsLazyPagingItems
 import com.qytech.tidalplayer.ui.TidalRoute
-import com.qytech.tidalplayer.ui.listpage.ListPageViewModel
 import com.qytech.tidalplayer.ui.listpage.model.DataType
 import com.qytech.tidalplayer.ui.listpage.model.SingleSong
 import com.qytech.tidalplayer.ui.listpage.model.SongList
+import com.qytech.tidalplayer.vm.ListPageViewModel
 import com.tidal.sdk.player.playbackengine.model.PlaybackState
 
 @Composable
@@ -54,9 +54,6 @@ fun MyMixContent(
             viewModel.clearIds()
         }
     }
-
-
-    HandlePagingError(myMixesPagingData)
 
     MyMixList(
         viewModel,

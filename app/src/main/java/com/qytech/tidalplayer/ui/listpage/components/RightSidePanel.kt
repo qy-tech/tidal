@@ -50,7 +50,7 @@ import coil3.compose.AsyncImage
 import coil3.request.ImageRequest
 import com.qytech.tidalplayer.R
 import com.qytech.tidalplayer.ui.TidalRoute
-import com.qytech.tidalplayer.ui.listpage.ListPageViewModel
+import com.qytech.tidalplayer.vm.ListPageViewModel
 import com.qytech.tidalplayer.ui.listpage.model.ItemInfo
 import com.qytech.tidalplayer.ui.listpage.model.SingleSong
 import com.qytech.tidalplayer.ui.listpage.model.SongList

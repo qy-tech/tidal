@@ -13,7 +13,6 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -28,10 +27,10 @@ import androidx.paging.LoadState
 import androidx.paging.compose.LazyPagingItems
 import androidx.paging.compose.collectAsLazyPagingItems
 import com.qytech.tidalplayer.ui.TidalRoute
-import com.qytech.tidalplayer.ui.listpage.ListPageViewModel
 import com.qytech.tidalplayer.ui.listpage.model.DataType
 import com.qytech.tidalplayer.ui.listpage.model.SingleSong
 import com.qytech.tidalplayer.ui.listpage.model.SongList
+import com.qytech.tidalplayer.vm.ListPageViewModel
 import com.tidal.sdk.player.playbackengine.model.PlaybackState
 
 @Composable
@@ -56,9 +55,6 @@ fun NewArrivalContent(
             viewModel.clearIds()
         }
     }
-
-
-    HandlePagingError(newArrivalPagingData)
 
     NewArrivalList(
         viewModel,

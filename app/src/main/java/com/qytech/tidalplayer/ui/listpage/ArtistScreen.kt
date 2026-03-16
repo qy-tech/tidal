@@ -52,10 +52,9 @@ import com.qytech.tidalplayer.R
 import com.qytech.tidalplayer.ui.TidalRoute
 import com.qytech.tidalplayer.ui.listpage.model.DataType
 import com.qytech.tidalplayer.ui.listpage.model.SongList
-import com.qytech.tidalplayer.ui.theme.GlowColorGreen
 import com.qytech.tidalplayer.utils.popBackSafely
+import com.qytech.tidalplayer.vm.ListPageViewModel
 import com.tidal.sdk.player.playbackengine.model.PlaybackState
-import kotlinx.coroutines.flow.emptyFlow
 
 @Composable
 fun ArtistScreen(

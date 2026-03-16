@@ -36,7 +36,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import com.qytech.tidalplayer.R
 import com.qytech.tidalplayer.ui.TidalRoute
-import com.qytech.tidalplayer.ui.TidalViewModel
+import com.qytech.tidalplayer.vm.TidalViewModel
 
 @Composable
 fun LoginStartScreen(

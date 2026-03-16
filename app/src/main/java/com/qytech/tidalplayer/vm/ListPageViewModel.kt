@@ -1,10 +1,12 @@
-package com.qytech.tidalplayer.ui.listpage
+package com.qytech.tidalplayer.vm
 
-import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.paging.PagingData
 import androidx.paging.cachedIn
 import androidx.paging.compose.LazyPagingItems
+import com.qytech.tidal.base.getOrNull
+import com.qytech.tidal.base.onError
+import com.qytech.tidal.base.onSuccess
 import com.qytech.tidal.cache.TidalCacheManager
 import com.qytech.tidal.data.Album
 import com.qytech.tidal.data.Artist
@@ -17,6 +19,9 @@ import com.qytech.tidal.data.paging.Pagination
 import com.qytech.tidal.data.toDisplayDuration
 import com.qytech.tidal.login.TidalLogin
 import com.qytech.tidal.repository.TidalRepository
+import com.qytech.tidalplayer.base.BaseViewModel
+import com.qytech.tidalplayer.ui.listpage.ControllerManager
+import com.qytech.tidalplayer.ui.listpage.GlobalManager
 import com.qytech.tidalplayer.ui.listpage.model.ChannelType
 import com.qytech.tidalplayer.ui.listpage.model.DataType
 import com.qytech.tidalplayer.ui.listpage.model.PagerFlow
@@ -45,7 +50,7 @@ class ListPageViewModel @Inject constructor(
     private val tidalCacheManager: TidalCacheManager,
     private val tidalRepository: TidalRepository,
     private val globalManager: GlobalManager
-) : ViewModel() {
+) : BaseViewModel() {
 
     val controllerUiState = controllerManager.controllerUiState
     val currentArtistId = controllerManager.currentArtistId
@@ -60,8 +65,6 @@ class ListPageViewModel @Inject constructor(
     private val myMixTracksHashMap = hashMapOf<String, Flow<PagingData<SingleSong>>>()
     private val discoveryMixTracksHashMap = hashMapOf<String, Flow<PagingData<SingleSong>>>()
     private val newArrivalHashMap = hashMapOf<String, Flow<PagingData<SingleSong>>>()
-    private val _showLoading = MutableStateFlow(false)
-    val showLoading = _showLoading.asStateFlow()
     private val _deletePlaylistIds = MutableStateFlow(emptySet<String>())
     val deletePlaylistIds = _deletePlaylistIds.asStateFlow()
     private val _createPlaylist = MutableStateFlow(emptyList<SongList>())
@@ -88,13 +91,16 @@ class ListPageViewModel @Inject constructor(
     val collectionPlaylistPagingData = playlistRefresh.flatMapLatest {
         PagerFlow.build(
             fetchData = { cursor ->
+                val empty = emptyList<Playlist>() to Pagination()
+
                 val userId = tidalCacheManager.getUserInfo()?.id
-                if (userId.isNullOrBlank()) {
-                    emptyList<Playlist>() to Pagination()
-                } else {
-                    val response = tidalRepository.getCollectionPlaylists(userId, cursor)
-                    response.playlists to response.pagination
-                }
+                if (userId.isNullOrBlank()) return@build empty
+
+                return@build tidalRepository
+                    .getCollectionPlaylists(userId, cursor)
+                    .getOrNull()
+                    ?.let { it.data to it.pagination }
+                    ?: empty
             },
             toUiModel = { res ->
                 SongList(
@@ -113,13 +119,16 @@ class ListPageViewModel @Inject constructor(
     val myPlaylistPagingData = myPlaylistRefresh.flatMapLatest {
         PagerFlow.build(
             fetchData = { cursor ->
+                val empty = emptyList<Playlist>() to Pagination()
+
                 val userId = tidalCacheManager.getUserInfo()?.id
-                if (userId.isNullOrBlank()) {
-                    emptyList<Playlist>() to Pagination()
-                } else {
-                    val response = tidalRepository.getUserPlaylists(userId, cursor)
-                    response.playlists to response.pagination
-                }
+                if (userId.isNullOrBlank()) return@build empty
+
+                return@build tidalRepository
+                    .getUserPlaylists(userId, cursor)
+                    .getOrNull()
+                    ?.let { it.data to it.pagination }
+                    ?: empty
             },
             toUiModel = { res ->
                 SongList(
@@ -138,13 +147,16 @@ class ListPageViewModel @Inject constructor(
     val collectionAlbumPagingData = albumsRefresh.flatMapLatest {
         PagerFlow.build(
             fetchData = { cursor ->
+                val empty = emptyList<Album>() to Pagination()
+
                 val userId = tidalCacheManager.getUserInfo()?.id
-                if (userId.isNullOrBlank()) {
-                    emptyList<Album>() to Pagination()
-                } else {
-                    val response = tidalRepository.getCollectionAlbums(userId, cursor)
-                    response.albums to response.pagination
-                }
+                if (userId.isNullOrBlank()) return@build empty
+
+                return@build tidalRepository
+                    .getCollectionAlbums(userId, cursor)
+                    .getOrNull()
+                    ?.let { it.data to it.pagination }
+                    ?: empty
             },
             toUiModel = { res ->
                 SongList(
@@ -162,13 +174,16 @@ class ListPageViewModel @Inject constructor(
     val collectionTracksPagingData = tracksRefresh.flatMapLatest {
         PagerFlow.build(
             fetchData = { cursor ->
+                val empty = emptyList<TrackDetail>() to Pagination()
+
                 val userId = tidalCacheManager.getUserInfo()?.id
-                if (userId.isNullOrBlank()) {
-                    emptyList<TrackDetail>() to Pagination()
-                } else {
-                    val response = tidalRepository.getCollectionTracks(userId, cursor)
-                    response.tracks to response.pagination
-                }
+                if (userId.isNullOrBlank()) return@build empty
+
+                return@build tidalRepository
+                    .getCollectionTracks(userId, cursor)
+                    .getOrNull()
+                    ?.let { it.data to it.pagination }
+                    ?: empty
             },
             toUiModel = { res ->
                 SingleSong(
@@ -190,13 +205,16 @@ class ListPageViewModel @Inject constructor(
     val collectionArtistsPagingData = artistsRefresh.flatMapLatest {
         PagerFlow.build(
             fetchData = { cursor ->
+                val empty = emptyList<ArtistDetail>() to Pagination()
+
                 val userId = tidalCacheManager.getUserInfo()?.id
-                if (userId.isNullOrBlank()) {
-                    emptyList<ArtistDetail>() to Pagination()
-                } else {
-                    val response = tidalRepository.getCollectionArtists(userId, cursor)
-                    response.artists to response.pagination
-                }
+                if (userId.isNullOrBlank()) return@build empty
+
+                return@build tidalRepository
+                    .getCollectionArtists(userId, cursor)
+                    .getOrNull()
+                    ?.let { it.data to it.pagination }
+                    ?: empty
             },
             toUiModel = { res ->
                 SongList(
@@ -214,13 +232,16 @@ class ListPageViewModel @Inject constructor(
     val myMixesPagingData = myMixesRefresh.flatMapLatest {
         PagerFlow.build(
             fetchData = { cursor ->
+                val empty = emptyList<Playlist>() to Pagination()
+
                 val userId = tidalCacheManager.getUserInfo()?.id
-                if (userId.isNullOrBlank()) {
-                    emptyList<Playlist>() to Pagination()
-                } else {
-                    val response = tidalRepository.getMyMixes(userId)
-                    response to Pagination()
-                }
+                if (userId.isNullOrBlank()) return@build empty
+
+                return@build tidalRepository
+                    .getMyMixes(userId)
+                    .getOrNull()
+                    ?.let { it.data to it.pagination }
+                    ?: empty
             },
             toUiModel = { res ->
                 SongList(
@@ -238,13 +259,15 @@ class ListPageViewModel @Inject constructor(
     val discoveryMixesPagingData = discoveryMixesRefresh.flatMapLatest {
         PagerFlow.build(
             fetchData = { cursor ->
+                val empty = emptyList<Playlist>() to Pagination()
                 val userId = tidalCacheManager.getUserInfo()?.id
-                if (userId.isNullOrBlank()) {
-                    emptyList<Playlist>() to Pagination()
-                } else {
-                    val response = tidalRepository.getDiscoveryMixes(userId)
-                    response to Pagination()
-                }
+                if (userId.isNullOrBlank()) return@build empty
+
+                return@build tidalRepository
+                    .getDiscoveryMixes(userId)
+                    .getOrNull()
+                    ?.let { it.data to it.pagination }
+                    ?: empty
             },
             toUiModel = { res ->
                 SongList(
@@ -262,13 +285,16 @@ class ListPageViewModel @Inject constructor(
     val newArrivalPagingData = newArrivalRefresh.flatMapLatest {
         PagerFlow.build(
             fetchData = { cursor ->
+                val empty = emptyList<Playlist>() to Pagination()
+
                 val userId = tidalCacheManager.getUserInfo()?.id
-                if (userId.isNullOrBlank()) {
-                    emptyList<Playlist>() to Pagination()
-                } else {
-                    val response = tidalRepository.getNewArrivalMixes(userId)
-                    response to Pagination()
-                }
+                if (userId.isNullOrBlank()) return@build empty
+
+                return@build tidalRepository
+                    .getNewArrivalMixes(userId)
+                    .getOrNull()
+                    ?.let { it.data to it.pagination }
+                    ?: empty
             },
             toUiModel = { res ->
                 SongList(
@@ -285,13 +311,16 @@ class ListPageViewModel @Inject constructor(
     fun searchPlaylist(searchText: String): Flow<PagingData<SongList>> {
         return PagerFlow.build(
             fetchData = { cursor ->
+                val empty = emptyList<Playlist>() to Pagination()
+
                 val userId = tidalCacheManager.getUserInfo()?.id
-                if (userId.isNullOrBlank()) {
-                    emptyList<Playlist>() to Pagination()
-                } else {
-                    val response = tidalRepository.searchPlaylists(searchText, cursor)
-                    response.playlists to response.pagination
-                }
+                if (userId.isNullOrBlank()) return@build empty
+
+                return@build tidalRepository
+                    .searchPlaylists(searchText, cursor)
+                    .getOrNull()
+                    ?.let { it.data to it.pagination }
+                    ?: empty
             },
             toUiModel = { res ->
                 SongList(
@@ -309,13 +338,16 @@ class ListPageViewModel @Inject constructor(
     fun searchTrack(searchText: String): Flow<PagingData<SingleSong>> {
         return PagerFlow.build(
             fetchData = { cursor ->
+                val empty = emptyList<TrackDetail>() to Pagination()
+
                 val userId = tidalCacheManager.getUserInfo()?.id
-                if (userId.isNullOrBlank()) {
-                    emptyList<TrackDetail>() to Pagination()
-                } else {
-                    val response = tidalRepository.searchTracks(searchText, cursor)
-                    response.tracks to response.pagination
-                }
+                if (userId.isNullOrBlank()) return@build empty
+
+                return@build tidalRepository
+                    .searchTracks(searchText, cursor)
+                    .getOrNull()
+                    ?.let { it.data to it.pagination }
+                    ?: empty
             },
             toUiModel = { res ->
                 SingleSong(
@@ -336,13 +368,16 @@ class ListPageViewModel @Inject constructor(
     fun searchAlbum(searchText: String): Flow<PagingData<SongList>> {
         return PagerFlow.build(
             fetchData = { cursor ->
+                val empty = emptyList<Album>() to Pagination()
+
                 val userId = tidalCacheManager.getUserInfo()?.id
-                if (userId.isNullOrBlank()) {
-                    emptyList<Album>() to Pagination()
-                } else {
-                    val response = tidalRepository.searchAlbums(searchText, cursor)
-                    response.albums to response.pagination
-                }
+                if (userId.isNullOrBlank()) return@build empty
+
+                return@build tidalRepository
+                    .searchAlbums(searchText, cursor)
+                    .getOrNull()
+                    ?.let { it.data to it.pagination }
+                    ?: empty
             },
             toUiModel = { res ->
                 SongList(
@@ -359,13 +394,16 @@ class ListPageViewModel @Inject constructor(
     fun searchArtist(searchText: String): Flow<PagingData<SongList>> {
         return PagerFlow.build(
             fetchData = { cursor ->
+                val empty = emptyList<ArtistDetail>() to Pagination()
+
                 val userId = tidalCacheManager.getUserInfo()?.id
-                if (userId.isNullOrBlank()) {
-                    emptyList<ArtistDetail>() to Pagination()
-                } else {
-                    val response = tidalRepository.searchArtists(searchText, cursor)
-                    response.artists to response.pagination
-                }
+                if (userId.isNullOrBlank()) return@build empty
+
+                return@build tidalRepository
+                    .searchArtists(searchText, cursor)
+                    .getOrNull()
+                    ?.let { it.data to it.pagination }
+                    ?: empty
             },
             toUiModel = { res ->
                 SongList(
@@ -421,20 +459,15 @@ class ListPageViewModel @Inject constructor(
         }
     }
 
-    fun getPagingDataHashMap(dataType: DataType): HashMap<String, Flow<PagingData<SingleSong>>> {
-        return when (dataType) {
-            DataType.NEW_ARRIVAL -> newArrivalHashMap
-            else -> hashMapOf()
-        }
-    }
-
     fun getPlaylistItemPagingData(listId: String): Flow<PagingData<SingleSong>> {
         Timber.d("getPlaylistItemPagingData listId: $listId")
         return PagerFlow.build(
             fetchData = { cursor ->
-                val response =
-                    tidalRepository.getPlaylistTracks(listId, cursor)
-                response.tracks to response.pagination
+                tidalRepository
+                    .getPlaylistTracks(listId, cursor)
+                    .getOrNull()
+                    ?.let { it.data to it.pagination }
+                    ?: Pair(emptyList(), Pagination())
             },
             toUiModel = { res ->
                 SingleSong(
@@ -455,12 +488,14 @@ class ListPageViewModel @Inject constructor(
     }
 
     fun getAlbumItemPagingData(listId: String): Flow<PagingData<SingleSong>> {
-        Timber.d("getAlbumItemPagingData listId: $listId")
+        Timber.Forest.d("getAlbumItemPagingData listId: $listId")
         return PagerFlow.build(
             fetchData = { cursor ->
-                val response =
-                    tidalRepository.getAlbumsTracks(listId, cursor)
-                response.tracks to response.pagination
+                tidalRepository
+                    .getAlbumsTracks(listId, cursor)
+                    .getOrNull()
+                    ?.let { it.data to it.pagination }
+                    ?: Pair(emptyList(), Pagination())
             },
             toUiModel = { res ->
                 SingleSong(
@@ -481,15 +516,18 @@ class ListPageViewModel @Inject constructor(
     }
 
     fun getArtistAlbumsPagingData(artistId: String): Flow<PagingData<SongList>> {
-        Timber.d("getArtistAlbumsPagingData artistId: $artistId")
+        Timber.Forest.d("getArtistAlbumsPagingData artistId: $artistId")
         return PagerFlow.build(
             fetchData = { cursor ->
-                if (artistId.isEmpty()) {
-                    emptyList<Album>() to Pagination()
-                } else {
-                    val response = tidalRepository.getArtistAlbums(artistId, cursor)
-                    response.albums to response.pagination
-                }
+                val empty = emptyList<Album>() to Pagination()
+
+                if (artistId.isEmpty()) return@build empty
+
+                return@build tidalRepository
+                    .getArtistAlbums(artistId, cursor)
+                    .getOrNull()
+                    ?.let { it.data to it.pagination }
+                    ?: empty
             },
             toUiModel = { res ->
                 SongList(
@@ -527,7 +565,7 @@ class ListPageViewModel @Inject constructor(
                                 )
                             )
                         } else {
-                            Timber.w(e.message ?: "异常错误")
+                            Timber.Forest.w(e.message ?: "异常错误")
 //                            ToastUtils.show(e.message ?: "异常错误")
                         }
                     }
@@ -557,7 +595,7 @@ class ListPageViewModel @Inject constructor(
     }
 
     fun setCurrentListId(listId: String, isClearBeforeData: Boolean = true) {
-        Timber.d("设置歌单id：$listId")
+        Timber.Forest.d("设置歌单id：$listId")
         controllerManager.setCurrentListId(listId, isClearBeforeData)
     }
 
@@ -566,7 +604,7 @@ class ListPageViewModel @Inject constructor(
     }
 
     fun loadAndPlaySong(index: Int, song: SingleSong) {
-        Timber.d("songId: ${song}")
+        Timber.Forest.d("songId: ${song}")
         controllerManager.loadAndPlay(index, song)
     }
 
@@ -611,128 +649,150 @@ class ListPageViewModel @Inject constructor(
     fun addTrackToCollection(trackId: String) {
         val userId = tidalCacheManager.getUserInfo()?.id
         viewModelScope.launch(Dispatchers.IO) {
-            try {
-                if (!userId.isNullOrBlank()) {
-                    tidalRepository.addTracksToCollection(userId, listOf(trackId))
-                    refreshData(DataType.TRACK)
-                } else {
-                    ToastUtils.show("添加收藏失败，用户Id为空")
-                }
-            } catch (e: Exception) {
-                ToastUtils.show("添加收藏失败")
+            if (userId.isNullOrBlank()) {
+                showToast("添加收藏失败，用户Id为空")
+                return@launch
             }
+
+            tidalRepository.addTracksToCollection(userId, listOf(trackId))
+                .onSuccess {
+                    refreshData(DataType.TRACK)
+                }
+                .onError {
+                    showToast("添加收藏失败")
+                }
         }
     }
 
     fun removeTrackToCollection(trackId: String) {
         val userId = tidalCacheManager.getUserInfo()?.id
         viewModelScope.launch(Dispatchers.IO) {
-            try {
-                if (!userId.isNullOrBlank()) {
-                    tidalRepository.removeTracksFromCollection(userId, listOf(trackId))
-                    refreshData(DataType.TRACK)
-                } else {
-                    ToastUtils.show("取消收藏失败，用户Id为空")
-                }
-            } catch (e: Exception) {
-                ToastUtils.show("取消收藏失败")
+            if (userId.isNullOrBlank()) {
+                showToast("取消收藏失败，用户Id为空")
+                return@launch
             }
+
+            tidalRepository.removeTracksFromCollection(userId, listOf(trackId))
+                .onSuccess {
+                    refreshData(DataType.TRACK)
+                }
+                .onError {
+                    showToast("取消收藏失败")
+                }
         }
     }
 
     fun addPlaylistToCollection(listId: String) {
         val userId = tidalCacheManager.getUserInfo()?.id
         viewModelScope.launch(Dispatchers.IO) {
-            try {
-                if (!userId.isNullOrBlank()) {
-                    tidalRepository.addPlaylistsToCollection(userId, listOf(listId))
-                    refreshData(DataType.PLAY_LIST)
-                } else {
-                    ToastUtils.show("添加收藏失败，用户Id为空")
-                }
-            } catch (e: Exception) {
-                ToastUtils.show("添加收藏失败")
+            if (userId.isNullOrBlank()) {
+                showToast("添加收藏失败，用户Id为空")
+                return@launch
             }
+
+            tidalRepository.addPlaylistsToCollection(userId, listOf(listId))
+                .onSuccess {
+                    refreshData(DataType.PLAY_LIST)
+                    showToast("收藏成功")
+                }
+                .onError {
+                    showToast("添加收藏失败")
+                }
         }
     }
 
     fun removePlaylistToCollection(listId: String) {
         val userId = tidalCacheManager.getUserInfo()?.id
         viewModelScope.launch(Dispatchers.IO) {
-            try {
-                if (!userId.isNullOrBlank()) {
-                    tidalRepository.removePlaylistsFromCollection(userId, listOf(listId))
-                    refreshData(DataType.PLAY_LIST)
-                } else {
-                    ToastUtils.show("取消收藏失败，用户Id为空")
-                }
-            } catch (e: Exception) {
-                ToastUtils.show("取消收藏失败")
+            if (userId.isNullOrBlank()) {
+                showToast("取消收藏失败，用户Id为空")
+                return@launch
             }
+
+            tidalRepository.removePlaylistsFromCollection(userId, listOf(listId))
+                .onSuccess {
+                    refreshData(DataType.PLAY_LIST)
+                    showToast("取消收藏成功")
+                }
+                .onError {
+                    showToast("取消收藏失败")
+                }
         }
     }
 
     fun addAlbumToCollection(listId: String) {
         val userId = tidalCacheManager.getUserInfo()?.id
         viewModelScope.launch(Dispatchers.IO) {
-            try {
-                if (!userId.isNullOrBlank()) {
-                    tidalRepository.addAlbumsToCollection(userId, listOf(listId))
-                    refreshData(DataType.ALBUM)
-                } else {
-                    ToastUtils.show("添加收藏失败，用户Id为空")
-                }
-            } catch (e: Exception) {
-                ToastUtils.show("添加收藏失败")
+            if (userId.isNullOrBlank()) {
+                showToast("添加收藏失败，用户Id为空")
+                return@launch
             }
+
+            tidalRepository.addAlbumsToCollection(userId, listOf(listId))
+                .onSuccess {
+                    refreshData(DataType.ALBUM)
+                    showToast("收藏成功")
+                }
+                .onError {
+                    showToast("添加收藏失败")
+                }
         }
     }
 
     fun removeAlbumToCollection(listId: String) {
         val userId = tidalCacheManager.getUserInfo()?.id
         viewModelScope.launch(Dispatchers.IO) {
-            try {
-                if (!userId.isNullOrBlank()) {
-                    tidalRepository.removeAlbumsFromCollection(userId, listOf(listId))
-                    refreshData(DataType.ALBUM)
-                } else {
-                    ToastUtils.show("取消收藏失败，用户Id为空")
-                }
-            } catch (e: Exception) {
-                ToastUtils.show("取消收藏失败")
+            if (userId.isNullOrBlank()) {
+                showToast("取消收藏失败，用户Id为空")
+                return@launch
             }
+
+            tidalRepository.removeAlbumsFromCollection(userId, listOf(listId))
+                .onSuccess {
+                    refreshData(DataType.ALBUM)
+                    showToast("取消收藏成功")
+                }
+                .onError {
+                    showToast("取消收藏失败")
+                }
         }
     }
 
     fun addArtistToCollection(artistId: String) {
         val userId = tidalCacheManager.getUserInfo()?.id
         viewModelScope.launch(Dispatchers.IO) {
-            try {
-                if (!userId.isNullOrBlank()) {
-                    tidalRepository.addArtistsToCollection(userId, listOf(artistId))
-                    refreshData(DataType.ARTIST)
-                } else {
-                    ToastUtils.show("添加收藏失败，用户Id为空")
-                }
-            } catch (e: Exception) {
-                ToastUtils.show("添加收藏失败")
+            if (userId.isNullOrBlank()) {
+                showToast("添加收藏失败，用户Id为空")
+                return@launch
             }
+
+            tidalRepository.addArtistsToCollection(userId, listOf(artistId))
+                .onSuccess {
+                    refreshData(DataType.ARTIST)
+                    showToast("收藏成功")
+                }
+                .onError {
+                    showToast("添加收藏失败")
+                }
         }
     }
 
     fun removeArtistToCollection(artistId: String) {
         val userId = tidalCacheManager.getUserInfo()?.id
         viewModelScope.launch(Dispatchers.IO) {
-            try {
-                if (!userId.isNullOrBlank()) {
-                    tidalRepository.removeArtistsFromCollection(userId, listOf(artistId))
-                    refreshData(DataType.ARTIST)
-                } else {
-                    ToastUtils.show("取消收藏失败，用户Id为空")
-                }
-            } catch (e: Exception) {
-                ToastUtils.show("取消收藏失败")
+            if (userId.isNullOrBlank()) {
+                showToast("取消收藏失败，用户Id为空")
+                return@launch
             }
+
+            tidalRepository.removeArtistsFromCollection(userId, listOf(artistId))
+                .onSuccess {
+                    refreshData(DataType.ARTIST)
+                    showToast("取消收藏成功")
+                }
+                .onError {
+                    showToast("取消收藏失败")
+                }
         }
     }
 
@@ -741,31 +801,26 @@ class ListPageViewModel @Inject constructor(
     }
 
     fun addTracksToPlaylist(playlistId: String, trackId: String) {
-        viewModelScope.launch(Dispatchers.IO) {
-            _showLoading.update { true }
-            try {
-                tidalRepository.addTracksToPlaylist(playlistId, listOf(trackId))
-
-                ToastUtils.show("添加成功")
-            } catch (e: Exception) {
-                ToastUtils.show("添加失败")
-            }
-            _showLoading.update { false }
+        launchWithLoading {
+            tidalRepository.addTracksToPlaylist(playlistId, listOf(trackId))
+                .onSuccess {
+                    showToast("添加成功")
+                }
+                .onError {
+                    showToast("添加失败")
+                }
         }
     }
 
     fun createPlaylist(name: String, description: String) {
-        viewModelScope.launch(Dispatchers.IO) {
-            _showLoading.update { true }
-            try {
-                val response = tidalRepository.createPlaylist(
-                    name = name,
-                    description = description
-                )
+        launchWithLoading {
+            tidalRepository.createPlaylist(name, description)
+                .onSuccess { response ->
+                    if (response.id.isEmpty()) {
+                        showToast("创建失败，歌单id为空")
+                        return@onSuccess
+                    }
 
-                if (response.id.isEmpty()) {
-                    ToastUtils.show("创建失败，歌单id为空")
-                } else {
                     val item = SongList(
                         id = response.id,
                         title = response.name,
@@ -780,33 +835,31 @@ class ListPageViewModel @Inject constructor(
                         )
                     )
                     _createPlaylist.addItem(item)
-                    ToastUtils.show("创建成功")
+                    showToast("创建成功")
                     refreshData(DataType.PLAY_LIST)
                 }
-            } catch (e: Exception) {
-                ToastUtils.show("创建失败")
-            }
-            _showLoading.update { false }
+                .onError {
+                    showToast("创建失败")
+                }
         }
     }
 
     fun deletePlaylist(listId: String) {
-        viewModelScope.launch(Dispatchers.IO) {
-            _showLoading.update { true }
-            try {
-                tidalRepository.deletePlaylist(listId)
-                _deletePlaylistIds.addItemId(listId)
-                _operationChannel.send(
-                    ChannelType.DeletePlaylist(
-                        result = true
+        launchWithLoading {
+            tidalRepository.deletePlaylist(listId)
+                .onSuccess {
+                    _deletePlaylistIds.addItemId(listId)
+                    _operationChannel.send(
+                        ChannelType.DeletePlaylist(
+                            result = true
+                        )
                     )
-                )
-                ToastUtils.show("删除成功")
-                refreshData(DataType.PLAY_LIST)
-            } catch (e: Exception) {
-                ToastUtils.show("删除失败")
-            }
-            _showLoading.update { false }
+                    showToast("删除成功")
+                    refreshData(DataType.PLAY_LIST)
+                }
+                .onError {
+                    showToast("删除失败")
+                }
         }
     }
 

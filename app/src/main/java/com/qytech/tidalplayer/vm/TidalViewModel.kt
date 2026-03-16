@@ -1,23 +1,17 @@
-package com.qytech.tidalplayer.ui
+package com.qytech.tidalplayer.vm
 
 import android.content.Context
-import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.qytech.tidal.BuildConfig
 import com.qytech.tidal.TidalService
 import com.qytech.tidal.cache.TidalCacheManager
-import com.qytech.tidal.data.UserInfo
 import com.qytech.tidal.login.TidalLogin
 import com.qytech.tidal.repository.TidalRepository
+import com.qytech.tidalplayer.base.BaseViewModel
 import com.tidal.sdk.auth.model.AuthConfig
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.SharingStarted
-import kotlinx.coroutines.flow.collectLatest
-import kotlinx.coroutines.flow.flow
-import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import timber.log.Timber
@@ -29,7 +23,7 @@ class TidalViewModel @Inject constructor(
     private val tidalLogin: TidalLogin,
     private val repository: TidalRepository,
     private val tidalCacheManager: TidalCacheManager
-) : ViewModel() {
+) : BaseViewModel() {
 
     init {
         TidalService.init(
@@ -46,12 +40,12 @@ class TidalViewModel @Inject constructor(
     val isLoggedIn = tidalLogin.loginUiState
         .map { state ->
             val cacheLoggedIn = !tidalCacheManager.getUserInfo()?.id.isNullOrBlank()
-            Timber.d("isLoggedIn: ${state.isLoggedIn}, cacheLoggedIn: ${cacheLoggedIn}, cacheClear: ${state.cacheClear}")
+            Timber.Forest.d("isLoggedIn: ${state.isLoggedIn}, cacheLoggedIn: ${cacheLoggedIn}, cacheClear: ${state.cacheClear}")
             state.isLoggedIn || (cacheLoggedIn && !state.cacheClear)
         }
         .stateIn(
             scope = viewModelScope,
-            started = SharingStarted.WhileSubscribed(0),
+            started = SharingStarted.Companion.WhileSubscribed(0),
             initialValue = false
         )
 

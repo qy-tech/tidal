@@ -10,7 +10,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.viewinterop.AndroidView
 import com.qytech.tidal.BuildConfig
-import com.qytech.tidalplayer.ui.TidalViewModel
+import com.qytech.tidalplayer.vm.TidalViewModel
 
 @Composable
 fun ComposeWebView(

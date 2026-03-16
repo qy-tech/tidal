@@ -15,7 +15,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
-import com.qytech.tidalplayer.ui.TidalViewModel
+import com.qytech.tidalplayer.vm.TidalViewModel
 
 private sealed class State {
     data object Init : State()

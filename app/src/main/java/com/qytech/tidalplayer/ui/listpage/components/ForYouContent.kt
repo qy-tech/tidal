@@ -54,13 +54,13 @@ import androidx.paging.compose.itemKey
 import coil3.compose.AsyncImage
 import com.qytech.tidalplayer.R
 import com.qytech.tidalplayer.ui.TidalRoute
-import com.qytech.tidalplayer.ui.listpage.ListPageViewModel
 import com.qytech.tidalplayer.ui.listpage.model.DataType
 import com.qytech.tidalplayer.ui.listpage.model.ItemInfo
 import com.qytech.tidalplayer.ui.listpage.model.ItemType
 import com.qytech.tidalplayer.ui.listpage.model.PageItem
 import com.qytech.tidalplayer.ui.listpage.model.SingleSong
 import com.qytech.tidalplayer.ui.listpage.model.SongList
+import com.qytech.tidalplayer.vm.ListPageViewModel
 import com.tidal.sdk.player.playbackengine.model.PlaybackState
 import kotlinx.coroutines.flow.emptyFlow
 
@@ -100,12 +100,6 @@ fun ForYouContent(
             viewModel.clearIds()
         }
     }
-
-
-    HandlePagingError(artistData)
-    HandlePagingError(playlistData)
-    HandlePagingError(albumData)
-    HandlePagingError(trackData)
 
     LaunchedEffect(trackData.itemCount, playingListId) {
         if (trackData.loadState.refresh is LoadState.NotLoading) {

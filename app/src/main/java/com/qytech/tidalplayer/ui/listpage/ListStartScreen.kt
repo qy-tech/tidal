@@ -78,6 +78,7 @@ import com.qytech.tidalplayer.ui.TidalRoute
 import com.qytech.tidalplayer.ui.listpage.components.CreateNewPlaylistDialog
 import com.qytech.tidalplayer.ui.listpage.components.CustomThinSlider
 import com.qytech.tidalplayer.ui.listpage.components.FullScreenLoading
+import com.qytech.tidalplayer.ui.listpage.components.HandleToastShow
 import com.qytech.tidalplayer.ui.listpage.components.MyPlaylistSlideBarContent
 import com.qytech.tidalplayer.ui.listpage.components.RightSidePanel
 import com.qytech.tidalplayer.ui.listpage.components.OptionSlideBarContent
@@ -85,6 +86,7 @@ import com.qytech.tidalplayer.ui.listpage.model.ChannelType
 import com.qytech.tidalplayer.ui.listpage.model.DataType
 import com.qytech.tidalplayer.ui.listpage.model.SingleSong
 import com.qytech.tidalplayer.utils.ToastUtils
+import com.qytech.tidalplayer.vm.ListPageViewModel
 import com.tidal.sdk.player.playbackengine.model.PlaybackState
 import kotlin.math.roundToInt
 
@@ -502,14 +504,12 @@ fun ListStartScreen(
                                     } else {
                                         viewModel.addAlbumToCollection(songList.id)
                                     }
-                                    ToastUtils.show("收藏成功")
                                 } else {
                                     if (type == DataType.PLAY_LIST) {
                                         viewModel.removePlaylistToCollection(songList.id)
                                     } else {
                                         viewModel.removeAlbumToCollection(songList.id)
                                     }
-                                    ToastUtils.show("取消收藏成功")
                                 }
                                 viewModel.closePanel()
                             }

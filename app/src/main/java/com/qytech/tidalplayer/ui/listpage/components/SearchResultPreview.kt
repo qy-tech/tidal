@@ -5,19 +5,15 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.wrapContentHeight
-import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.LazyHorizontalGrid
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.pager.HorizontalPager
@@ -56,20 +52,16 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.navigation.NavController
 import androidx.paging.LoadState
-import androidx.paging.PagingData
 import androidx.paging.compose.LazyPagingItems
 import androidx.paging.compose.collectAsLazyPagingItems
 import androidx.paging.compose.itemKey
 import coil3.compose.AsyncImage
 import com.qytech.tidalplayer.R
 import com.qytech.tidalplayer.ui.TidalRoute
-import com.qytech.tidalplayer.ui.listpage.ListPageViewModel
 import com.qytech.tidalplayer.ui.listpage.model.DataType
-import com.qytech.tidalplayer.ui.listpage.model.SingleSong
 import com.qytech.tidalplayer.ui.listpage.model.SongList
-import com.qytech.tidalplayer.utils.popBackSafely
+import com.qytech.tidalplayer.vm.ListPageViewModel
 import com.tidal.sdk.player.playbackengine.model.PlaybackState
-import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.launch
 import kotlin.random.Random
@@ -137,7 +129,7 @@ fun SearchResult(
                 TabTitle.Tracks -> {
                     TrackResult(
                         searchText = searchText,
-                        listId = "${System.currentTimeMillis() * 1000L + Random.nextInt(0,1000)}"
+                        listId = "${System.currentTimeMillis() * 1000L + Random.nextInt(0, 1000)}"
                     )
                 }
 
@@ -177,9 +169,6 @@ private fun TrackResult(
         }
     }
     val favouriteTracks by viewModel.collectionTrackIds.collectAsState()
-
-
-    HandlePagingError(dataList)
 
     LaunchedEffect(dataList.itemCount, listId) {
         if (dataList.loadState.refresh is LoadState.NotLoading) {
@@ -439,14 +428,16 @@ private fun PlaylistAlbumResult(
     dataType: DataType
 ) {
     val viewModel: ListPageViewModel = hiltViewModel()
-    val pagingItem = remember(dataType,searchText) {
-        when(dataType) {
+    val pagingItem = remember(dataType, searchText) {
+        when (dataType) {
             DataType.PLAY_LIST -> {
                 viewModel.searchPlaylist(searchText)
             }
+
             DataType.ALBUM -> {
                 viewModel.searchAlbum(searchText)
             }
+
             else -> emptyFlow()
         }
     }.collectAsLazyPagingItems()

@@ -57,15 +57,14 @@ import com.qytech.tidalplayer.R
 import com.qytech.tidalplayer.ui.TidalRoute
 import com.qytech.tidalplayer.ui.listpage.components.CreateNewPlaylistDialog
 import com.qytech.tidalplayer.ui.listpage.components.FullScreenLoading
-import com.qytech.tidalplayer.ui.listpage.components.HandlePagingError
 import com.qytech.tidalplayer.ui.listpage.components.RequestOrigin
 import com.qytech.tidalplayer.ui.listpage.components.TipDialog
 import com.qytech.tidalplayer.ui.listpage.components.TipDialogBean
 import com.qytech.tidalplayer.ui.listpage.model.ChannelType
-import com.qytech.tidalplayer.ui.listpage.model.DataType
 import com.qytech.tidalplayer.ui.listpage.model.SongList
 import com.qytech.tidalplayer.utils.ToastUtils
 import com.qytech.tidalplayer.utils.popBackSafely
+import com.qytech.tidalplayer.vm.ListPageViewModel
 import kotlinx.coroutines.launch
 
 @Composable
@@ -85,8 +84,6 @@ fun UserInfoScreen(
     val deletePlaylistIds by viewModel.deletePlaylistIds.collectAsState()
     val createPlaylist by viewModel.createPlaylist.collectAsState()
 
-    HandlePagingError(userPlaylist)
-
     LaunchedEffect(Unit) {
         viewModel.operationChannel.collect { type ->
             when (type) {
@@ -95,11 +92,13 @@ fun UserInfoScreen(
                         playlistCount--
                     }
                 }
+
                 is ChannelType.CreatePlaylist -> {
                     if (type.result) {
                         playlistCount++
                     }
                 }
+
                 else -> {}
             }
         }

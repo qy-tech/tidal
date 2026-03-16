@@ -24,7 +24,7 @@ import androidx.navigation.NavController
 import com.qytech.tidal.login.LoginHandleState
 import com.qytech.tidalplayer.R
 import com.qytech.tidalplayer.ui.TidalRoute
-import com.qytech.tidalplayer.ui.TidalViewModel
+import com.qytech.tidalplayer.vm.TidalViewModel
 import com.qytech.tidalplayer.ui.login.webview.ComposeWebView
 
 @Composable

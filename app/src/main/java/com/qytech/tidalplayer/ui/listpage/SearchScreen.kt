@@ -57,6 +57,7 @@ import com.qytech.tidalplayer.ui.listpage.components.SearchResult
 import com.qytech.tidalplayer.utils.ToastUtils
 import com.qytech.tidalplayer.utils.checkDescriptionLegal
 import com.qytech.tidalplayer.utils.popBackSafely
+import com.qytech.tidalplayer.vm.ListPageViewModel
 
 @Composable
 fun SearchScreen(
